@@ -1,22 +1,20 @@
 import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { EndCard, FingerTap, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
+import { EndCard, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
 
-// ═══ 時間軸常數（30fps，總長 34.23s＝1027f；要改節奏改這裡）═══════════
+// ═══ 時間軸常數（30fps，總長 20s＝600f；開場依序呈現標示卡、QR 示意、掃描）════
 // 空間圖 v3（PO 提供 0B-7 展台渲染三連）：scene1 亮景全景 → scene2 暗景中景（QR 聚光）→ scene3 近景正視
-// 開場靜音；功能旁白：微台版 guide=20.01s(601f)、日文 Keita=4.80s(144f)
+// 開場靜音；內斂專業職工版 guide=13.25s(398f)
 const T = {
-  s2aStart: 120,     // 段2a：切暗景中景，推向 QR 聚光（4.0s）
-  s2bStart: 174,     // 段2b：切近景正視（5.8s）
-  phoneIn: 180,      // 手機入鏡（6.0s）
-  functionStart: 232,// 功能介紹開始；此前保持無旁白
-  scanEnd: 232,      // 掃描完成→跳轉 App（7.7s）
-  s4Start: 843,      // 段4：手指移向 JP（28.1s）
-  jpSwitch: 863,     // 日文介面切換點（28.8s）
-  fadeOut: 1001,     // 結尾淡出（33.4s）
-  total: 1027,
+  s2aStart: 36,
+  s2bStart: 58,
+  phoneIn: 64,
+  functionStart: 160,
+  scanEnd: 160,
+  fadeOut: 574,
+  total: 600,
 };
-const VO = { guide: 240, japanese: 869 };
+const VO = { guide: 160 };
 
 const A = (p: string) => `asembly/airraid/${p}`;
 // 聚光點（PIL 亮度質心量測，objectFit cover 換算後畫布座標）
@@ -85,23 +83,20 @@ export const AirRaidDemo: React.FC = () => {
       <AirRaidBackground />
 
       {/* 段1 覆蓋層：功能標示卡＋左側 QR 放大示意（指向說明牌上的 QR） */}
-      <Sequence from={0} durationInFrames={T.s2aStart}>
-        <TitleCard index={1} title="語音導覽" subtitle="示範情境：空襲——望遠鏡互動裝置" enterFrame={10} />
-        <QrCallout enterFrame={30} bgScaleOf={(f) => interpolate(f, [0, T.s2aStart + 18], [1.05, 1.12])} />
+      <Sequence from={0} durationInFrames={T.functionStart}>
+        <TitleCard index={1} title="語音導覽" subtitle="掃描展板 QR，開啟該展項語音解說" enterFrame={2} />
+        <QrCallout enterFrame={24} bgScaleOf={(f) => interpolate(f, [0, T.s2aStart + 18], [1.05, 1.12])} />
       </Sequence>
 
-      {/* 段2 掃碼＋段3 功能＋段4 切日文：手機（不能包 Sequence，否則子元件幀號變相對值） */}
+      {/* 段2 掃碼＋段3 功能：手機（不能包 Sequence，否則子元件幀號變相對值） */}
       {frame >= T.phoneIn - 5 && (
-        <PhoneFrame enterFrame={T.phoneIn} x={380} hand={A("hand_hold.png")}
-          overlay={<FingerTap src={A("finger_tap.png")} tip={[625, 186]} imgSize={1024} scale={1.0}
-            target={[315, 37]} start={T.s4Start} tapAt={T.jpSwitch - 4} end={T.jpSwitch + 34} from={[-560, 960]} />}>
+        <PhoneFrame enterFrame={T.phoneIn} x={380} hand={A("hand_hold.png")}>
           {/* 掃描相機畫面（對準展台說明牌上的 QR） */}
           {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} />}
-          {/* App 語音導覽分頁（原型實截：中文播放中 → 日文播放中） */}
+          {/* App 語音導覽分頁（原型實截：中文播放中） */}
           {frame >= T.scanEnd && (
             <>
-              <Img src={staticFile(A("app_tw_play.png"))} style={{ position: "absolute", width: "100%", opacity: frame >= T.jpSwitch ? 0 : 1 }} />
-              <Img src={staticFile(A("app_jp_play.png"))} style={{ position: "absolute", width: "100%", opacity: interpolate(frame, [T.jpSwitch - 4, T.jpSwitch + 4], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) }} />
+              <Img src={staticFile(A("app_tw_play.png"))} style={{ position: "absolute", width: "100%" }} />
             </>
           )}
         </PhoneFrame>
@@ -109,19 +104,16 @@ export const AirRaidDemo: React.FC = () => {
 
       {/* 功能旁白（開場段無音軌） */}
       <Sequence from={VO.guide}><Audio src={staticFile(A("vo_airraid_guide_tw.mp3"))} /></Sequence>
-      <Sequence from={VO.japanese}><Audio src={staticFile(A("vo_s3_ja_v2.mp3"))} volume={(f) => interpolate(f, [120, 150], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} /></Sequence>
 
       {/* 字幕 */}
       <Subtitle lines={[
-        { text: "掃描展板 QR，即可開啟語音導覽。", from: VO.guide, to: 414 },
-        { text: "1944 年，空襲警報劃過組立工場上空。", from: 414, to: 621 },
-        { text: "抬頭看，桁架上變形的痕跡，就是歷史的證據。", from: 621, to: 841 },
-        { text: "頭上の鉄骨には、空襲の傷跡が残っています。", small: "（頭上鋼架，仍留著空襲的傷痕。）", from: VO.japanese, to: 1015 },
+        { text: "不妨掃描展板 QR Code，聽聽語音解說。", from: VO.guide, to: 296 },
+        { text: "一九四四年空襲造成桁架變形，痕跡至今仍在。", from: 296, to: 560 },
       ]} />
 
       {/* 結尾淡出＋落款 */}
       <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-      <EndCard feature="語音導覽" index={1} fade={fade} />
+      <EndCard feature="掃描展板 QR，開啟語音解說" index={1} fade={fade} />
     </AbsoluteFill>
   );
 };

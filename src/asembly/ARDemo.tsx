@@ -2,19 +2,19 @@ import React from "react";
 import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { EndCard, FingerTap, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
 
-// ═══ AR 導覽功能示範（G-1-3 機坑×台工1677）──時間軸常數（30fps，總長 22.6s＝678f）═══
+// ═══ AR 導覽功能示範（G-1-3 機坑×台工1677）──時間軸常數（30fps，總長 15s＝450f）════
 // 空間圖：PO 提供 G-3-機坑三連（scene1 亮景全景→scene2 訪客舉手機→scene3 調暗＋說明牌 QR 聚光）
 // 本片無旁白；以字幕串接功能敘事
 const T = {
-  s2aStart: 120,     // 段2a：切訪客舉手機視角（4.0s）
-  s2bStart: 174,     // 段2b：切暗景聚光，推向說明牌 QR（5.8s）
-  phoneIn: 186,      // 手機入鏡（6.2s）
-  functionStart: 244,// 功能介紹開始；此前保持無旁白
-  scanEnd: 244,      // 掃描完成→跳轉 App AR 分頁（8.1s）
-  arTap: 445,        // 手指點按啟動 AR（14.8s）
-  arReveal: 452,     // 台工1677 AR 重現 crossfade（15.1s）
-  fadeOut: 650,      // 結尾淡出（21.7s）
-  total: 678,
+  s2aStart: 30,
+  s2bStart: 48,
+  phoneIn: 38,
+  functionStart: 72,
+  scanEnd: 72,
+  arTap: 260,
+  arReveal: 267,
+  fadeOut: 426,
+  total: 450,
 };
 const A = (p: string) => `asembly/ardemo/${p}`;
 // scene1 說明牌 QR 畫布座標（cover 換算 scale=1 基準）；scene3 聚光點（畫面百分比）
@@ -82,9 +82,9 @@ export const ARDemo: React.FC = () => {
       <ARBackground />
 
       {/* 段1 覆蓋層：功能標示卡＋左側 QR 放大示意 */}
-      <Sequence from={0} durationInFrames={T.s2aStart}>
-        <TitleCard index={2} title="AR 探索" subtitle="示範情境：機坑與台工1677 高速車輪鏇床" enterFrame={10} />
-        <QrCallout enterFrame={30} bgScaleOf={(f) => interpolate(f, [0, T.s2aStart + 18], [1.05, 1.12])} />
+      <Sequence from={0} durationInFrames={T.functionStart}>
+        <TitleCard index={2} title="AR 探索" subtitle="掃描展板 QR，在原址疊合機具歷史影像" enterFrame={5} />
+        <QrCallout enterFrame={15} bgScaleOf={(f) => interpolate(f, [0, T.s2aStart + 18], [1.05, 1.12])} />
       </Sequence>
 
       {/* 手機（不能包 Sequence，否則子元件幀號變相對值）：掃描→AR 分頁→點按→台工1677 重現 */}
@@ -104,15 +104,15 @@ export const ARDemo: React.FC = () => {
 
       {/* 字幕 */}
       <Subtitle lines={[
-        { text: "掃描展板 QR，即可開啟 AR 探索。", from: 252, to: 330 },
-        { text: "台工一六七七高速車輪鏇床，現在人在富岡機廠。", from: 330, to: 424 },
-        { text: "用 AR，我把它請回原本的位置——", from: 424, to: 540 },
-        { text: "你看，這就是當年的氣勢。", from: 540, to: 644 },
+        { text: "掃描展板 QR，開啟 AR 模式。", from: 80, to: 150 },
+        { text: "系統辨識展項位置與台工 1677 機具資料。", from: 150, to: 230 },
+        { text: "點選畫面按鈕，在機坑原址疊合機具影像。", from: 230, to: 330 },
+        { text: "畫面可對照機坑現況與機具原貌。", from: 330, to: 420 },
       ]} />
 
       {/* 結尾淡出＋落款 */}
       <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-      <EndCard feature="AR 探索" index={2} fade={fade} />
+      <EndCard feature="AR 於展項原址呈現機具影像" index={2} fade={fade} />
     </AbsoluteFill>
   );
 };

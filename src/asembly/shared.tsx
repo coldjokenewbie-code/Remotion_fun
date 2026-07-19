@@ -173,7 +173,7 @@ export const EndCard: React.FC<{ feature: string; index: number; fade: number; i
     <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity, fontFamily: FONT }}>
       <div style={{ color: "#e8ecf2", textAlign: "center" }}>
         <div style={{ color: "#ffad73", fontSize: 17, fontWeight: 800, letterSpacing: 4 }}>{isFinal ? "組立工場行動導覽" : `導覽功能 ${String(index).padStart(2, "0")} / 04`}</div>
-        <div style={{ fontSize: 34, letterSpacing: 6, fontWeight: 600, marginTop: 12 }}>{isFinal ? "四種方式，走進工場故事" : feature}</div>
+        <div style={{ fontSize: 34, letterSpacing: 4, fontWeight: 600, marginTop: 12 }}>{feature}</div>
       </div>
     </div>
   );

@@ -2,20 +2,21 @@ import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { EndCard, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
 
-// ═══ 記憶中的聲音示範 v2（0B-3 職工的回憶）──30fps，總長 30.17s＝905f ═══
+// ═══ 記憶中的聲音示範 v2（0B-3 職工的回憶）──30fps，總長 20s＝600f ═══
 // 場景：PO 提供 OB-3 三連（scene1 亮景→scene2 訪客舉手機→scene3 暗景聚光）
-// 開場靜音；功能段微台版邀請旁白 10.29s(309f)，再播人才培育真素材節錄 9.5s(285f)
+// 開場靜音；內斂專業職工版 7.49s(225f)，再播前輩口述節錄 5.2s(156f)
 const T = {
-  s2aStart: 120,
-  s2bStart: 174,
-  phoneIn: 186,
-  functionStart: 244,
-  scanEnd: 244,
-  progSwap: 704,     // 播放進度截圖切換（真實進度條）
-  fadeOut: 877,
-  total: 905,
+  s2aStart: 36,
+  s2bStart: 58,
+  phoneIn: 60,
+  functionStart: 150,
+  scanEnd: 150,
+  progSwap: 470,
+  memoryDuration: 156,
+  fadeOut: 574,
+  total: 600,
 };
-const VO = { invite: 252, memory: 569 };
+const VO = { invite: 150, memory: 375 };
 
 const A = (p: string) => `asembly/memory/${p}`;
 const QR1 = { x: 130, y: 381 };          // scene1 立牌 QR 畫布基準（抽幀校核）
@@ -80,9 +81,9 @@ export const MemoryVoiceDemo: React.FC = () => {
       <MemoryBackground />
 
       {/* 段1 覆蓋層 */}
-      <Sequence from={0} durationInFrames={T.s2aStart}>
-        <TitleCard index={3} title="記憶中的聲音" subtitle="示範情境：職工的回憶" enterFrame={10} />
-        <QrCallout enterFrame={30} bgScaleOf={(f) => interpolate(f, [0, T.s2aStart + 18], [1.05, 1.12])} />
+      <Sequence from={0} durationInFrames={T.functionStart}>
+        <TitleCard index={3} title="記憶中的聲音" subtitle="掃描展板 QR，播放前輩口述與工作記憶" enterFrame={2} />
+        <QrCallout enterFrame={24} bgScaleOf={(f) => interpolate(f, [0, T.s2aStart + 18], [1.05, 1.12])} />
       </Sequence>
 
       {/* 手機：掃描→記憶分頁（真實進度條 0:01→0:04）；不能包 Sequence */}
@@ -100,19 +101,17 @@ export const MemoryVoiceDemo: React.FC = () => {
 
       {/* 功能段聲音：微台版邀請旁白 → 人才培育原始音檔節錄（真素材） */}
       <Sequence from={VO.invite}><Audio src={staticFile(A("vo_memory_invite_tw.mp3"))} /></Sequence>
-      <Sequence from={VO.memory}><Audio src={staticFile(A("vo_s2_memory_excerpt.mp3"))} /></Sequence>
+      <Sequence from={VO.memory} durationInFrames={T.memoryDuration}><Audio src={staticFile(A("vo_s2_memory_excerpt.mp3"))} /></Sequence>
 
       {/* 字幕 */}
       <Subtitle lines={[
-        { text: "這裡留著前輩們的聲音記憶。", from: VO.invite, to: 402 },
-        { text: "掃一下 QR Code，聽聽當年的故事。", from: 402, to: 561 },
-        { text: "1938 年，由臺北鐵道工技手新鄉重夫，", from: VO.memory, to: 717 },
-        { text: "倡議設立技工見習教習所（戰後改為技工養成所）。", from: 717, to: 852 },
+        { text: "不妨掃描展板 QR Code，聽聽前輩口述，保存工場記憶。", from: VO.invite, to: VO.memory },
+        { text: "1938 年，由臺北鐵道工技手新鄉重夫，", from: VO.memory, to: VO.memory + T.memoryDuration },
       ]} />
 
       {/* 結尾淡出＋落款 */}
       <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-      <EndCard feature="記憶中的聲音" index={3} fade={fade} />
+      <EndCard feature="掃描展板 QR，播放前輩口述記憶" index={3} fade={fade} />
     </AbsoluteFill>
   );
 };

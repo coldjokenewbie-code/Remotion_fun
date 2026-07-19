@@ -2,21 +2,21 @@ import React from "react";
 import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { EndCard, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
 
-// ═══ 每日任務示範（組立工場練習所）──30fps，總長 26s＝780f ═══
+// ═══ 每日任務示範（組立工場練習所）──30fps，總長 16s＝480f ═══
 // 腳本：PO 每日任務_W0710 pptx 五拍——開場任務頁→五機具列表→地圖→遊玩+掃機台QR記進度→完玩領證書
 // 本片無旁白；以字幕串接五段功能敘事
 const T = {
-  phoneIn: 60,       // 訪客打開手機（開場即進任務頁，本片不掃碼開場）
-  functionStart: 140,// 功能介紹開始；此前保持無旁白
-  listStart: 140,    // 五機具卡陸續滑入
-  mapStart: 260,     // 地圖頁
-  playBg: 300,       // 背景切遊玩照片
-  drillBg: 380,      // 背景切鑽削挑戰機台（畫面含 QR）
-  progAt: 440,       // 掃描登入→進度 3/5
-  certBg: 555,       // 背景切證書機台（畫面含 QR）
-  doneAt: 565,       // 手機 5/5 完成+證書
-  fadeOut: 756,
-  total: 780,
+  phoneIn: 20,
+  functionStart: 60,
+  listStart: 60,
+  mapStart: 150,
+  playBg: 180,
+  drillBg: 230,
+  progAt: 285,
+  certBg: 350,
+  doneAt: 360,
+  fadeOut: 456,
+  total: 480,
 };
 const A = (p: string) => `asembly/quest/${p}`;
 const ORANGE = "#e8862d";
@@ -123,9 +123,9 @@ const DoneScreen: React.FC = () => (
     <Header />
     <Prog pct={100} n={5} />
     <div style={{ background: "#fff", borderRadius: 12, margin: "10px 14px", padding: "14px 16px", textAlign: "center" }}>
-      <div style={{ color: "#35a06f", fontSize: 18, fontWeight: 800 }}>恭喜畢業！五項挑戰全數完成</div>
-      <Img src={staticFile(A("cert_paper.png"))} style={{ width: 300, borderRadius: 6, marginTop: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.18)" }} />
-      <div style={{ background: "#c9a227", color: "#fff", fontSize: 15, fontWeight: 800, borderRadius: 22, padding: "9px 0", marginTop: 12, letterSpacing: 2 }}>領取結業證書</div>
+      <div style={{ color: "#35a06f", fontSize: 18, fontWeight: 800 }}>五項任務完成・結業證書已產生</div>
+      <Img src={staticFile(A("cert_filled.png"))} style={{ width: 300, borderRadius: 6, marginTop: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.18)" }} />
+      <div style={{ background: "#c9a227", color: "#fff", fontSize: 15, fontWeight: 800, borderRadius: 22, padding: "9px 0", marginTop: 12, letterSpacing: 2 }}>下載結業證書</div>
     </div>
   </div>
 );
@@ -168,7 +168,7 @@ export const QuestDemo: React.FC = () => {
 
       {/* 段1 標示卡 */}
       <Sequence from={0} durationInFrames={T.listStart}>
-        <TitleCard index={4} title="每日任務" subtitle="示範情境：組立工場練習所" enterFrame={10} />
+        <TitleCard index={4} title="每日任務" subtitle="依地圖完成五項機具任務，掃描機台 QR 記錄進度" enterFrame={10} />
       </Sequence>
 
       {/* 手機（全程手持；本片開場即開手機，不掃碼進入） */}
@@ -185,14 +185,14 @@ export const QuestDemo: React.FC = () => {
 
       {/* 字幕 */}
       <Subtitle lines={[
-        { text: "每日任務會帶你找到五座機具，一關一關完成挑戰。", from: 140, to: 370 },
-        { text: "每過一關，掃描機台上的 QR，進度會自動記錄。", from: 380, to: 550 },
-        { text: "五關全過，結業證書領回家——恭喜畢業！", from: 560, to: 740 },
+        { text: "系統以地圖列出五項機具任務與所在位置。", from: 60, to: 210 },
+        { text: "完成操作後掃描機台 QR，系統自動更新任務進度。", from: 210, to: 350 },
+        { text: "五項任務完成後，系統產生可下載的結業證書。", from: 350, to: 450 },
       ]} />
 
       {/* 結尾淡出＋落款 */}
       <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-      <EndCard feature="每日任務" index={4} fade={fade} isFinal />
+      <EndCard feature="五項任務完成後產生結業證書" index={4} fade={fade} isFinal />
     </AbsoluteFill>
   );
 };
