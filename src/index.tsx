@@ -1,25 +1,26 @@
 import React from "react";
 import { Composition, registerRoot } from "remotion";
-import { LatheScene } from "./LatheScene";
 import { WorldTripMap } from "./WorldTripMap";
 import { AirRaidDemo } from "./asembly/AirRaidDemo";
+import { ARDemo } from "./asembly/ARDemo";
 import { MemoryVoiceDemo } from "./asembly/MemoryVoiceDemo";
+import { QuestDemo } from "./asembly/QuestDemo";
 
 const RemotionRoot: React.FC = () => {
   return (
     <>
       <Composition
-        id="LatheAnimation"
-        component={LatheScene}
-        durationInFrames={150}
-        fps={30}
-        width={1280}
-        height={600}
-      />
-      <Composition
         id="AirRaidDemo"
         component={AirRaidDemo}
-        durationInFrames={570}
+        durationInFrames={726}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="ARDemo"
+        component={ARDemo}
+        durationInFrames={678}
         fps={30}
         width={1920}
         height={1080}
@@ -27,7 +28,15 @@ const RemotionRoot: React.FC = () => {
       <Composition
         id="MemoryVoiceDemo"
         component={MemoryVoiceDemo}
-        durationInFrames={585}
+        durationInFrames={588}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="QuestDemo"
+        component={QuestDemo}
+        durationInFrames={780}
         fps={30}
         width={1920}
         height={1080}

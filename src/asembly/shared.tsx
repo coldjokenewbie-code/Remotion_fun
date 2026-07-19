@@ -1,5 +1,5 @@
 import React from "react";
-import { interpolate, spring, useCurrentFrame, useVideoConfig, staticFile, Img } from "remotion";
+import { Easing, interpolate, spring, useCurrentFrame, useVideoConfig, staticFile, Img } from "remotion";
 
 export const FONT = '"Noto Sans TC", "PingFang TC", "Heiti TC", sans-serif';
 
@@ -61,8 +61,8 @@ export const Subtitle: React.FC<{ lines: { text: string; from: number; to: numbe
   );
 };
 
-// ── 手機外框：screen 內容由 children 提供 ───────────────────────
-export const PhoneFrame: React.FC<{ enterFrame: number; x?: number; children: React.ReactNode }> = ({ enterFrame, x = 0, children }) => {
+// ── 手機外框：screen 內容由 children 提供；hand 可選（手持示意，隨手機進場）──
+export const PhoneFrame: React.FC<{ enterFrame: number; x?: number; hand?: string; overlay?: React.ReactNode; children: React.ReactNode }> = ({ enterFrame, x = 0, hand, overlay, children }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const p = spring({ frame: frame - enterFrame, fps, config: { damping: 200 } });
@@ -77,12 +77,58 @@ export const PhoneFrame: React.FC<{ enterFrame: number; x?: number; children: Re
       <div style={{ width: 390, height: 844, borderRadius: 49, overflow: "hidden", position: "relative", background: "#111" }}>
         {children}
       </div>
+      {/* 手持示意：去背手部素材，手機黑板區已挖空（對位：gen 機身 bbox 296-691×105-852 → 本框 400×866） */}
+      {hand && (
+        <Img src={staticFile(hand)} style={{
+          position: "absolute", left: -300, top: 3, width: 1037, height: 1037,
+          maxWidth: "none", pointerEvents: "none",
+        }} />
+      )}
+      {overlay}
     </div>
   );
 };
 
+// ── 手指點按（去背食指素材；tip＝素材內指尖座標；target＝手機外框座標系）──
+export const FingerTap: React.FC<{
+  src: string; tip: [number, number]; imgSize: number; scale: number;
+  target: [number, number]; start: number; tapAt: number; end: number; from?: [number, number];
+}> = ({ src, tip, imgSize, scale, target, start, tapAt, end, from = [150, 280] }) => {
+  const frame = useCurrentFrame();
+  if (frame < start || frame > end) return null;
+  // 手不透明（真人手不會半透明）：進出場全靠位移——從 from 向量外滑入、原路滑出
+  const tIn = interpolate(frame, [start, tapAt - 2], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.out(Easing.cubic) });
+  const back = interpolate(frame, [tapAt + 12, end], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.in(Easing.cubic) });
+  const disp = Math.min(1, (1 - tIn) + back);
+  const dx = from[0] * disp;
+  const dy = from[1] * disp;
+  const appear = back < 0.7 ? 1 : 1 - (back - 0.7) / 0.3; // 僅離場末端（已在暗背景上）淡出防跳切
+  const press = frame >= tapAt - 2 && frame < tapAt + 4 ? 0.96 : 1; // 指尖下壓
+  const x = target[0] + dx, y = target[1] + dy;
+  const rippleT = frame >= tapAt ? Math.min(1, (frame - tapAt) / 12) : 0;
+  return (
+    <>
+      {rippleT > 0 && rippleT < 1 && (
+        <div style={{
+          position: "absolute", left: target[0], top: target[1],
+          width: 30 + 64 * rippleT, height: 30 + 64 * rippleT, borderRadius: "50%",
+          border: "3px solid rgba(255,138,61,0.9)", opacity: 1 - rippleT,
+          transform: "translate(-50%,-50%)", pointerEvents: "none",
+        }} />
+      )}
+      <Img src={staticFile(src)} style={{
+        position: "absolute", left: x - tip[0] * scale, top: y - tip[1] * scale,
+        width: imgSize * scale, height: imgSize * scale, maxWidth: "none",
+        opacity: appear, pointerEvents: "none",
+        transform: `scale(${press})`, transformOrigin: `${tip[0] * scale}px ${tip[1] * scale}px`,
+        filter: "drop-shadow(-6px 10px 14px rgba(0,0,0,0.35))",
+      }} />
+    </>
+  );
+};
+
 // ── 掃描視圖（相機畫面：背景＋QR＋掃描線）───────────────────────
-export const ScanView: React.FC<{ bg: string; qr: string; from: number; to: number }> = ({ bg, qr, from, to }) => {
+export const ScanView: React.FC<{ bg: string; qr: string; from: number; to: number; doneLabel?: string }> = ({ bg, qr, from, to, doneLabel = "✓ 已辨識・開啟語音導覽" }) => {
   const frame = useCurrentFrame();
   const t = interpolate(frame, [from, to], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const scanY = 260 + 300 * (0.5 - 0.5 * Math.cos(t * Math.PI * 4)); // 上下掃兩趟
@@ -112,7 +158,7 @@ export const ScanView: React.FC<{ bg: string; qr: string; from: number; to: numb
       {!locked && <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: scanY, width: 268, height: 3, background: "linear-gradient(90deg, transparent, #35d07f, transparent)" }} />}
       {locked && (
         <div style={{ position: "absolute", left: "50%", top: "62%", transform: "translateX(-50%)", color: "#35d07f", fontFamily: FONT, fontSize: 20, fontWeight: 700, background: "rgba(0,0,0,0.55)", padding: "6px 16px", borderRadius: 20 }}>
-          ✓ 已辨識・開啟語音導覽
+          {doneLabel}
         </div>
       )}
     </div>
