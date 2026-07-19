@@ -20,7 +20,7 @@ const T = {
 };
 const A = (p: string) => `asembly/quest/${p}`;
 const SCENE_QR = { x: 605, y: 598, size: 52 };
-const SCAN_QR = { x: 216, y: 601, size: 140 };
+const SCAN_QR = { x: 217, y: 603, size: 124 };
 const ORANGE = "#e8862d";
 const CREAM = "#faf7f2";
 

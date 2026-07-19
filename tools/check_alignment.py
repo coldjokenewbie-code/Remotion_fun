@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure v7 QR alignment and write annotated evidence overlays."""
+"""Verify v7.2 source-space QR geometry and write four triptych overlays."""
 
 import json
 import math
@@ -12,150 +12,121 @@ import numpy as np
 import zxingcpp
 from PIL import Image
 
+from make_scan_panel import ASSETS, ITEMS, PANEL_SIZE, ScanItem, qr_to_source, source_to_panel
+
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "out/_align_v7"
-PANEL_SIZE = (480, 1040)
-ITEMS = (
-    {"id": "airraid", "component": "AirRaidDemo.tsx", "scene": "airraid/scene1_0B7.png",
-     "scene_raw": (752.9, 775.1, 16.0), "layout": "cover", "crop_source": "airraid/scene3_0B7_close.png",
-     "crop": (200, 470, 350, 795), "qr": "airraid/qr_audio_0B7_badge.png"},
-    {"id": "ardemo", "component": "ARDemo.tsx", "scene": "ardemo/scene1_G13.png",
-     "scene_raw": (350.5, 304.5, 8.0), "layout": "cover", "crop_source": "ardemo/scene1_G13.png",
-     "crop": (305, 190, 405, 407), "qr": "ardemo/qr_ar_G13_badge.png"},
-    {"id": "memory", "component": "MemoryVoiceDemo.tsx", "scene": "memory/scene1_0B3.png",
-     "scene_raw": (62.1, 185.8, 13.0), "layout": "cover", "crop_source": "memory/scene3_0B3_dim.png",
-     "crop": (30, 105, 130, 322), "qr": "memory/qr_memory_0B3_badge.png"},
-    {"id": "quest", "component": "QuestDemo.tsx", "scene": "quest/kiosk_drill.png",
-     "scene_raw": (599.2, 730.5, 64.0), "layout": "quest", "crop_source": "quest/kiosk_drill.png",
-     "crop": (500, 455, 720, 932), "qr": "quest/qr_quest_gold.png"},
-)
+OUT = ROOT / "out/_align_v72"
 
 
-def read_geometry(component: str, name: str) -> tuple[float, float, float]:
-    source = (ROOT / "src/asembly" / component).read_text(encoding="utf-8")
-    match = re.search(rf"const {name} = \{{ x: ([\d.]+), y: ([\d.]+), size: ([\d.]+) \}}", source)
-    if not match:
-        raise ValueError(f"{component} 缺少 {name}")
-    return tuple(float(value) for value in match.groups())
-
-
-def render_scene(item: dict[str, object]) -> tuple[np.ndarray, tuple[float, float, float]]:
-    image = cv2.imread(str(ROOT / "public/asembly" / item["scene"]))
-    height, width = image.shape[:2]
-    raw_x, raw_y, raw_size = item["scene_raw"]
-    if item["layout"] == "quest":
-        scale = 1080 / height
-        canvas = np.zeros((1080, 1920, 3), dtype=np.uint8)
-        resized = cv2.resize(image, (round(width * scale), 1080), interpolation=cv2.INTER_LANCZOS4)
-        left = round(1920 * 0.06)
-        canvas[:, left:left + resized.shape[1]] = resized
-        return canvas, (left + raw_x * scale, raw_y * scale, raw_size * scale)
-    scale = max(1920 / width, 1080 / height)
-    resized = cv2.resize(image, (round(width * scale), round(height * scale)), interpolation=cv2.INTER_LANCZOS4)
-    left = (resized.shape[1] - 1920) // 2
-    top = (resized.shape[0] - 1080) // 2
-    canvas = resized[top:top + 1080, left:left + 1920]
-    return canvas, (raw_x * scale - left, raw_y * scale - top, raw_size * scale)
-
-
-def decode_qr(path: Path) -> tuple[str, tuple[float, float, float], np.ndarray]:
-    image = Image.open(path).convert("RGB")
-    results = zxingcpp.read_barcodes(image, formats=zxingcpp.BarcodeFormat.QRCode)
+def decode_qr(path: Path) -> tuple[str, np.ndarray]:
+    results = zxingcpp.read_barcodes(Image.open(path).convert("RGB"),
+                                    formats=zxingcpp.BarcodeFormat.QRCode)
     valid = [result for result in results if result.valid]
     if len(valid) != 1:
         raise ValueError(f"{path} QR count={len(valid)}，須為 1")
     position = valid[0].position
-    points = np.array([(position.top_left.x, position.top_left.y), (position.top_right.x, position.top_right.y),
-                       (position.bottom_right.x, position.bottom_right.y), (position.bottom_left.x, position.bottom_left.y)], dtype=float)
+    points = np.float32(((position.top_left.x, position.top_left.y),
+                         (position.top_right.x, position.top_right.y),
+                         (position.bottom_right.x, position.bottom_right.y),
+                         (position.bottom_left.x, position.bottom_left.y)))
+    return valid[0].text, points
+
+
+def geometry(points: np.ndarray) -> tuple[float, float, float]:
     center = points.mean(axis=0)
-    size = (np.linalg.norm(points[1] - points[0]) + np.linalg.norm(points[2] - points[1])) / 2
-    return valid[0].text, (float(center[0]), float(center[1]), float(size)), points
+    edges = [np.linalg.norm(points[(index + 1) % 4] - points[index]) for index in range(4)]
+    return float(center[0]), float(center[1]), float(sum(edges) / 4)
 
 
-def expected_text(item: dict[str, object]) -> str:
-    text, _, _ = decode_qr(ROOT / "public/asembly" / item["qr"])
-    return text
+def expected_points(item: ScanItem) -> tuple[str, np.ndarray]:
+    qr_path = ASSETS / item.qr
+    payload, reference_points = decode_qr(qr_path)
+    qr = cv2.imread(str(qr_path))
+    transform = source_to_panel(item) @ qr_to_source(item, qr.shape)
+    points = cv2.perspectiveTransform(reference_points[None, :, :], transform)[0]
+    return payload, points
 
 
-def crop_template(item: dict[str, object]) -> np.ndarray:
-    image = cv2.imread(str(ROOT / "public/asembly" / item["crop_source"]))
-    left, top, right, bottom = item["crop"]
-    crop = image[top:bottom, left:right]
-    return cv2.resize(crop, PANEL_SIZE, interpolation=cv2.INTER_LANCZOS4)
+def read_scan_geometry(item: ScanItem) -> tuple[float, float, float]:
+    source = (ROOT / "src/asembly" / item.component).read_text(encoding="utf-8")
+    match = re.search(r"const SCAN_QR = \{ x: ([\d.]+), y: ([\d.]+), size: ([\d.]+) \}", source)
+    if not match:
+        raise ValueError(f"{item.component} 缺少 SCAN_QR")
+    return tuple(float(value) for value in match.groups())
 
 
-def draw_scene_overlay(item: dict[str, object], measured: tuple[float, float, float], constant: tuple[float, float, float]) -> str:
-    canvas, _ = render_scene(item)
-    measured_point = tuple(round(value) for value in measured[:2])
-    constant_point = tuple(round(value) for value in constant[:2])
-    cv2.circle(canvas, measured_point, max(10, round(measured[2] / 2)), (0, 220, 0), 4)
-    cv2.circle(canvas, constant_point, max(6, round(constant[2] / 2)), (0, 0, 255), 3)
-    cv2.line(canvas, measured_point, constant_point, (255, 120, 0), 3)
-    cv2.putText(canvas, "GREEN measured / RED constant", (40, 1040), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-    path = OUT / f"{item['id']}_scene_qr.png"
-    cv2.imwrite(str(path), canvas)
+def source_template(item: ScanItem) -> np.ndarray:
+    source = cv2.imread(str(ASSETS / item.source))
+    return cv2.warpPerspective(source, source_to_panel(item), PANEL_SIZE,
+                               flags=cv2.INTER_LANCZOS4)
+
+
+def match_score(panel: np.ndarray, template: np.ndarray) -> float:
+    panel_gray = cv2.cvtColor(panel, cv2.COLOR_BGR2GRAY)
+    template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+    return float(cv2.matchTemplate(panel_gray, template_gray, cv2.TM_CCOEFF_NORMED)[0, 0])
+
+
+def draw_geometry(image: np.ndarray, expected: np.ndarray, measured: np.ndarray) -> np.ndarray:
+    marked = image.copy()
+    cv2.polylines(marked, [expected.astype(int)], True, (0, 0, 255), 2)
+    cv2.polylines(marked, [measured.astype(int)], True, (0, 220, 0), 2)
+    expected_center = tuple(np.round(expected.mean(axis=0)).astype(int))
+    measured_center = tuple(np.round(measured.mean(axis=0)).astype(int))
+    cv2.line(marked, expected_center, measured_center, (255, 120, 0), 2)
+    return marked
+
+
+def write_triptych(item: ScanItem, template: np.ndarray, panel: np.ndarray,
+                    expected: np.ndarray, measured: np.ndarray) -> str:
+    marked = draw_geometry(panel, expected, measured)
+    overlay = cv2.addWeighted(template, 0.5, panel, 0.5, 0)
+    triptych = np.hstack((template, marked, overlay))
+    labels = ("SCENE CROP", "PANEL: RED expected / GREEN decoded", "50% OVERLAY")
+    for index, label in enumerate(labels):
+        cv2.putText(triptych, label, (index * 480 + 12, 34),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
+    path = OUT / f"{item.clip}_triptych.png"
+    cv2.imwrite(str(path), triptych)
     return str(path.relative_to(ROOT))
 
 
-def draw_scan_overlay(item: dict[str, object], measured: tuple[float, float, float], constant: tuple[float, float, float], points: np.ndarray) -> str:
-    panel = cv2.imread(str(ROOT / "public/asembly" / item["id"] / "scan_panel.png"))
-    cv2.polylines(panel, [points.astype(int)], True, (0, 220, 0), 3)
-    measured_point = tuple(round(value) for value in measured[:2])
-    constant_point = tuple(round(value) for value in constant[:2])
-    frame_size = round(constant[2] * 1.3)
-    half = frame_size // 2
-    cv2.rectangle(panel, (constant_point[0] - half, constant_point[1] - half),
-                  (constant_point[0] + half, constant_point[1] + half), (0, 0, 255), 3)
-    cv2.circle(panel, measured_point, 6, (0, 220, 0), -1)
-    cv2.circle(panel, constant_point, 4, (0, 0, 255), -1)
-    cv2.line(panel, measured_point, constant_point, (255, 120, 0), 2)
-    path = OUT / f"{item['id']}_scan_qr.png"
-    cv2.imwrite(str(path), panel)
-    return str(path.relative_to(ROOT))
-
-
-def draw_source_comparison(item: dict[str, object], panel: np.ndarray, template: np.ndarray) -> str:
-    blend = cv2.addWeighted(template, 0.5, panel, 0.5, 0)
-    comparison = np.hstack((template, panel, blend))
-    for index, label in enumerate(("SCENE CROP", "SCAN PANEL", "50% OVERLAY")):
-        cv2.putText(comparison, label, (index * 480 + 14, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
-    path = OUT / f"{item['id']}_source_overlay.png"
-    cv2.imwrite(str(path), comparison)
-    return str(path.relative_to(ROOT))
-
-
-def measure_item(item: dict[str, object]) -> tuple[dict[str, object], list[str]]:
-    scene_canvas, scene_measured = render_scene(item)
-    del scene_canvas
-    scene_constant = read_geometry(item["component"], "SCENE_QR")
-    scan_constant = read_geometry(item["component"], "SCAN_QR")
-    panel_path = ROOT / "public/asembly" / item["id"] / "scan_panel.png"
-    payload, scan_measured, points = decode_qr(panel_path)
+def measure_item(item: ScanItem) -> tuple[dict[str, object], list[str]]:
+    panel_path = ASSETS / item.clip / "scan_panel.png"
+    payload, measured_points = decode_qr(panel_path)
+    expected_payload, projected_points = expected_points(item)
+    measured = geometry(measured_points)
+    expected = geometry(projected_points)
+    scan_constant = read_scan_geometry(item)
+    position_error = math.dist(measured[:2], expected[:2])
+    ratio_error = abs(measured[2] / expected[2] - 1) * 100
+    frame_center_error = math.dist(measured[:2], scan_constant[:2])
+    frame_size_error = abs(measured[2] * 1.3 - scan_constant[2] * 1.3)
     panel = cv2.imread(str(panel_path))
-    template = crop_template(item)
-    score = float(cv2.matchTemplate(cv2.cvtColor(panel, cv2.COLOR_BGR2GRAY),
-                                    cv2.cvtColor(template, cv2.COLOR_BGR2GRAY), cv2.TM_CCOEFF_NORMED)[0, 0])
-    scene_error = math.dist(scene_measured[:2], scene_constant[:2])
-    scan_error = math.dist(scan_measured[:2], scan_constant[:2])
+    template = source_template(item)
+    score = match_score(panel, template)
     errors = []
-    if scene_error > scene_measured[2] * 0.5:
-        errors.append(f"{item['id']} scene error {scene_error:.2f}px")
-    if score < 0.5:
-        errors.append(f"{item['id']} template score {score:.3f}")
-    if scan_error > 15:
-        errors.append(f"{item['id']} scan error {scan_error:.2f}px")
-    if payload != expected_text(item):
-        errors.append(f"{item['id']} QR payload mismatch")
-    overlays = {
-        "scene": draw_scene_overlay(item, scene_measured, scene_constant),
-        "scan": draw_scan_overlay(item, scan_measured, scan_constant, points),
-        "source": draw_source_comparison(item, panel, template),
+    if payload != expected_payload:
+        errors.append(f"{item.clip} payload mismatch")
+    if ratio_error > 10:
+        errors.append(f"{item.clip} ratio error {ratio_error:.2f}%")
+    if position_error > 10:
+        errors.append(f"{item.clip} position error {position_error:.2f}px")
+    if score < 0.7:
+        errors.append(f"{item.clip} template score {score:.3f}")
+    if frame_center_error > 10 or frame_size_error > 13:
+        errors.append(f"{item.clip} ScanView geometry mismatch")
+    triptych = write_triptych(item, template, panel, projected_points, measured_points)
+    result = {
+        "clip": item.clip, "qr_text": payload, "expected_qr": expected,
+        "measured_qr": measured, "ratio_error_pct": ratio_error,
+        "position_error_px": position_error, "template_score": score,
+        "scan_constant": scan_constant, "frame_center_error_px": frame_center_error,
+        "frame_expected_size_px": measured[2] * 1.3,
+        "frame_actual_size_px": scan_constant[2] * 1.3,
+        "frame_size_error_px": frame_size_error, "triptych": triptych,
     }
-    result = {"clip": item["id"], "scene_measured": scene_measured, "scene_constant": scene_constant,
-              "scene_error_px": scene_error, "scene_tolerance_px": scene_measured[2] * 0.5,
-              "scan_measured": scan_measured, "scan_constant": scan_constant, "scan_error_px": scan_error,
-              "template_score": score, "qr_count": 1, "qr_text": payload, "overlays": overlays}
     return result, errors
 
 
@@ -163,15 +134,23 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     results, errors = [], []
     for item in ITEMS:
-        result, item_errors = measure_item(item)
+        try:
+            result, item_errors = measure_item(item)
+        except (ValueError, OSError) as error:
+            errors.append(str(error))
+            continue
         results.append(result)
         errors.extend(item_errors)
-        print(f"{result['clip']}: scene={result['scene_error_px']:.2f}px scan={result['scan_error_px']:.2f}px match={result['template_score']:.3f} QR=1")
-    (OUT / "measurements.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"{item.clip}: ratio={result['ratio_error_pct']:.2f}% "
+              f"position={result['position_error_px']:.2f}px "
+              f"match={result['template_score']:.3f} "
+              f"frame-center={result['frame_center_error_px']:.2f}px")
+    (OUT / "measurements.json").write_text(
+        json.dumps(results, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     if errors:
         print("FAIL " + "; ".join(errors), file=sys.stderr)
         return 1
-    print("PASS 四片 v7 對齊機檢")
+    print("PASS 四支 v7.2 原圖空間對齊機檢")
     return 0
 
 

@@ -19,7 +19,7 @@ const T = {
 const A = (p: string) => `asembly/ardemo/${p}`;
 // v7 實圖量測：橘色 AR QR；面板旁另有綠色語音 QR，勿圈錯。
 const SCENE_QR = { x: 608, y: 532, size: 14 };
-const SCAN_QR = { x: 218, y: 549, size: 142 };
+const SCAN_QR = { x: 176, y: 529, size: 107 };
 const SPOT3 = { x: "12.3%", y: "50.9%" };
 
 const ARBackground: React.FC = () => {

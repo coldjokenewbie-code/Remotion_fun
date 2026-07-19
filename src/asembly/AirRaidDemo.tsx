@@ -23,7 +23,7 @@ const SPOT2 = { x: "19.7%", y: "69.5%" }; // PO 2026-07-17 更新版 scene2（20
 const SPOT3 = { x: "12.5%", y: "56%" };
 // v7 實圖量測：scene1 cover 座標；scan_panel 為 480×1040 座標。
 const SCENE_QR = { x: 653, y: 810, size: 16 };
-const SCAN_QR = { x: 209, y: 557, size: 140 };
+const SCAN_QR = { x: 197, y: 560, size: 115 };
 
 const MultiLanguageCard: React.FC = () => {
   const frame = useCurrentFrame();

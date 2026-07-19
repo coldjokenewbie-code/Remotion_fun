@@ -20,7 +20,7 @@ const VO = { invite: 150, memory: 410 };
 
 const A = (p: string) => `asembly/memory/${p}`;
 const SCENE_QR = { x: 118, y: 376, size: 26 };
-const SCAN_QR = { x: 226, y: 584, size: 148 };
+const SCAN_QR = { x: 241, y: 500, size: 131 };
 const SPOT3 = { x: "6.4%", y: "42.8%" };
 
 const MemoryBackground: React.FC = () => {
