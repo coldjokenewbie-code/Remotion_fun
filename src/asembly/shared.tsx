@@ -3,6 +3,8 @@ import { Easing, interpolate, spring, useCurrentFrame, useVideoConfig, staticFil
 
 export const FONT = '"Noto Sans TC", "PingFang TC", "Heiti TC", sans-serif';
 
+export type QrGeometry = { x: number; y: number; size: number };
+
 // ── 標示卡（左上：展項名稱＋簡介）──────────────────────────────
 export const TitleCard: React.FC<{ title: string; subtitle: string; enterFrame: number; index: number }> = ({ title, subtitle, enterFrame, index }) => {
   const frame = useCurrentFrame();
@@ -39,6 +41,36 @@ export const QrCard: React.FC<{ src: string; label: string; enterFrame: number }
       <div style={{ fontSize: 19, fontWeight: 700, color: "#1a2233", marginTop: 8, letterSpacing: 1 }}>{label}</div>
     </div>
   );
+};
+
+export const SceneQrCallout: React.FC<{
+  src: string; enterFrame: number; target: QrGeometry;
+  backgroundScale?: number; card?: { x: number; y: number; width: number };
+}> = ({ src, enterFrame, target, backgroundScale = 1, card = { x: 140, y: 400, width: 320 } }) => {
+  const frame = useCurrentFrame();
+  const progress = interpolate(frame, [enterFrame, enterFrame + 14], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  const targetX = 960 + (target.x - 960) * backgroundScale;
+  const targetY = 540 + (target.y - 540) * backgroundScale;
+  const isCardLeft = card.x + card.width / 2 < targetX;
+  const lineX = isCardLeft ? card.x + card.width + 6 : card.x - 6;
+  const lineY = card.y + card.width * 0.5;
+  const targetEdgeX = targetX + (isCardLeft ? -target.size / 2 : target.size / 2);
+  return <>
+    <div style={{
+      position: "absolute", left: card.x, top: card.y, width: card.width,
+      transform: `translateX(${interpolate(progress, [0, 1], [-80, 0])}px)`, opacity: progress,
+      background: "#fff", borderRadius: 14, padding: 10,
+      boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
+    }}>
+      <Img src={staticFile(src)} style={{ width: "100%", display: "block" }} />
+    </div>
+    <svg style={{ position: "absolute", inset: 0, opacity: progress }} width={1920} height={1080}>
+      <line x1={lineX} y1={lineY} x2={targetEdgeX} y2={targetY} stroke="#fff" strokeWidth={3.5} strokeDasharray="10 7" />
+      <circle cx={targetX} cy={targetY} r={Math.max(24, target.size * 0.7)} fill="none" stroke="#fff" strokeWidth={4} />
+    </svg>
+  </>;
 };
 
 // ── 字幕（底部置中；jp 可附中文小字）────────────────────────────
@@ -127,36 +159,50 @@ export const FingerTap: React.FC<{
   );
 };
 
+const QrFrame: React.FC<{ qr: QrGeometry; frameSize: number }> = ({ qr, frameSize }) => (
+  <div style={{
+    position: "absolute", left: `${(qr.x - frameSize / 2) / 4.8}%`,
+    top: `${(qr.y - frameSize / 2) / 10.4}%`, width: `${frameSize / 4.8}%`,
+    height: `${frameSize / 10.4}%`,
+  }}>
+    {([[0, 0], [1, 0], [0, 1], [1, 1]] as const).map(([right, bottom]) => (
+      <div key={`${right}-${bottom}`} style={{
+        position: "absolute", width: "28%", height: "28%",
+        left: right ? undefined : 0, right: right ? 0 : undefined,
+        top: bottom ? undefined : 0, bottom: bottom ? 0 : undefined,
+        borderTop: bottom ? undefined : "5px solid rgba(255,255,255,0.95)",
+        borderBottom: bottom ? "5px solid rgba(255,255,255,0.95)" : undefined,
+        borderLeft: right ? undefined : "5px solid rgba(255,255,255,0.95)",
+        borderRight: right ? "5px solid rgba(255,255,255,0.95)" : undefined,
+        boxSizing: "border-box",
+      }} />
+    ))}
+  </div>
+);
+
 // ── 掃描視圖（相機畫面：背景＋QR＋掃描線）───────────────────────
 export const ScanView: React.FC<{
-  bg: string; from: number; to: number; scanLabel?: string; doneLabel?: string;
-}> = ({ bg, from, to, scanLabel = "相機・對準展板 QR", doneLabel = "✓ 已辨識・開啟導覽功能" }) => {
+  bg: string; from: number; to: number; qr: QrGeometry;
+  scanLabel?: string; doneLabel?: string;
+}> = ({ bg, from, to, qr, scanLabel = "相機・對準展板 QR", doneLabel = "✓ 已辨識・開啟導覽功能" }) => {
   const frame = useCurrentFrame();
   const t = interpolate(frame, [from, to], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const scanY = 260 + 300 * (0.5 - 0.5 * Math.cos(t * Math.PI * 4)); // 上下掃兩趟
+  const frameSize = qr.size * 1.3;
+  const scanY = qr.y - frameSize / 2 + frameSize * (0.5 - 0.5 * Math.cos(t * Math.PI * 4));
   const locked = t > 0.82;
   return (
     <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
       <Img src={staticFile(bg)} style={{
         position: "absolute", width: "100%", height: "100%", objectFit: "cover",
-        transform: "scale(1.02)", filter: "brightness(0.9)",
+        filter: "brightness(0.9)",
       }} />
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.28)" }} />
       <div style={{ position: "absolute", top: 28, left: 0, width: "100%", color: "#fff", textAlign: "center", fontFamily: FONT, fontSize: 17, fontWeight: 700, letterSpacing: 2 }}>
         <span style={{ background: "rgba(0,0,0,0.62)", padding: "7px 12px", borderRadius: 16 }}>{scanLabel}</span>
       </div>
-      {/* 取景框四角 */}
-      {([[0, 0], [1, 0], [0, 1], [1, 1]] as const).map(([cx, cy], i) => (
-        <div key={i} style={{
-          position: "absolute", left: `calc(50% + ${cx ? 105 : -135}px)`, top: `calc(44% + ${cy ? 105 : -135}px)`,
-          width: 30, height: 30,
-          borderTop: cy ? "none" : "5px solid #fff", borderBottom: cy ? "5px solid #fff" : "none",
-          borderLeft: cx ? "none" : "5px solid #fff", borderRight: cx ? "5px solid #fff" : "none",
-          opacity: 0.95,
-        }} />
-      ))}
+      <QrFrame qr={qr} frameSize={frameSize} />
       {/* 掃描線 */}
-      {!locked && <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: scanY, width: 268, height: 3, background: "linear-gradient(90deg, transparent, #35d07f, transparent)" }} />}
+      {!locked && <div style={{ position: "absolute", left: `${(qr.x - frameSize / 2) / 4.8}%`, top: `${scanY / 10.4}%`, width: `${frameSize / 4.8}%`, height: 3, background: "linear-gradient(90deg, transparent, #35d07f, transparent)" }} />}
       {locked && (
         <div style={{ position: "absolute", left: "50%", top: "62%", transform: "translateX(-50%)", color: "#35d07f", fontFamily: FONT, fontSize: 20, fontWeight: 700, background: "rgba(0,0,0,0.55)", padding: "6px 16px", borderRadius: 20 }}>
           {doneLabel}

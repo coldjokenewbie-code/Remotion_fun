@@ -12,7 +12,7 @@ const RemotionRoot: React.FC = () => {
       <Composition
         id="AirRaidDemo"
         component={AirRaidDemo}
-        durationInFrames={600}
+        durationInFrames={732}
         fps={30}
         width={1920}
         height={1080}

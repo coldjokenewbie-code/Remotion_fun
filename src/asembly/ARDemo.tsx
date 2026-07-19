@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { EndCard, FingerTap, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
+import { EndCard, FingerTap, FONT, PhoneFrame, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
 
 // ═══ AR 導覽功能示範（G-1-3 機坑×台工1677）──時間軸常數（30fps，總長 15s＝450f）════
 // 空間圖：PO 提供 G-3-機坑三連（scene1 亮景全景→scene2 訪客舉手機→scene3 調暗＋說明牌 QR 聚光）
@@ -17,36 +17,10 @@ const T = {
   total: 450,
 };
 const A = (p: string) => `asembly/ardemo/${p}`;
-// scene1 說明牌 QR 畫布座標（cover 換算 scale=1 基準）；scene3 聚光點（畫面百分比）
-const QR1 = { x: 611, y: 533 }; // 面板上橘色 AR QR（面板另有綠色語音導覽 QR，勿圈錯）
+// v7 實圖量測：橘色 AR QR；面板旁另有綠色語音 QR，勿圈錯。
+const SCENE_QR = { x: 608, y: 532, size: 14 };
+const SCAN_QR = { x: 218, y: 549, size: 142 };
 const SPOT3 = { x: "12.3%", y: "50.9%" };
-
-// ── 段1 左側 QR 放大示意（同空襲片 v3.5 作法）──
-const QrCallout: React.FC<{ enterFrame: number; bgScaleOf: (f: number) => number }> = ({ enterFrame, bgScaleOf }) => {
-  const frame = useCurrentFrame();
-  const p = interpolate(frame, [enterFrame, enterFrame + 14], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const s = bgScaleOf(frame);
-  const ax = 960 + (QR1.x - 960) * s;
-  const ay = 540 + (QR1.y - 540) * s;
-  const card = { x: 140, y: 400, w: 320 };
-  const lineFrom = { x: card.x + card.w + 6, y: card.y + card.w * 0.55 };
-  return (
-    <>
-      <div style={{
-        position: "absolute", left: card.x, top: card.y, width: card.w,
-        transform: `translateX(${interpolate(p, [0, 1], [-80, 0])}px)`, opacity: p,
-        background: "#fff", borderRadius: 14, padding: 10,
-        boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
-      }}>
-        <Img src={staticFile(A("qr_ar_G13_labeled.png"))} style={{ width: "100%", display: "block" }} />
-      </div>
-      <svg style={{ position: "absolute", inset: 0, opacity: p }} width={1920} height={1080}>
-        <line x1={lineFrom.x} y1={lineFrom.y} x2={ax - 28} y2={ay - 8} stroke="#fff" strokeWidth={3.5} strokeDasharray="10 7" />
-        <circle cx={ax} cy={ay} r={28} fill="none" stroke="#fff" strokeWidth={4} />
-      </svg>
-    </>
-  );
-};
 
 const ARBackground: React.FC = () => {
   const frame = useCurrentFrame();
@@ -84,7 +58,10 @@ export const ARDemo: React.FC = () => {
       {/* 段1 覆蓋層：功能標示卡＋左側 QR 放大示意 */}
       <Sequence from={0} durationInFrames={T.functionStart}>
         <TitleCard index={2} title="AR 探索" subtitle="掃描展板 QR，在原址疊合機具歷史影像" enterFrame={5} />
-        <QrCallout enterFrame={15} bgScaleOf={(f) => interpolate(f, [0, T.s2aStart + 18], [1.05, 1.12])} />
+      </Sequence>
+      <Sequence from={0} durationInFrames={T.s2aStart}>
+        <SceneQrCallout src={A("qr_ar_G13_labeled.png")} enterFrame={15} target={SCENE_QR}
+          backgroundScale={interpolate(frame, [0, T.s2aStart + 18], [1.05, 1.12])} />
       </Sequence>
 
       {/* 手機（不能包 Sequence，否則子元件幀號變相對值）：掃描→AR 分頁→點按→台工1677 重現 */}
@@ -92,7 +69,7 @@ export const ARDemo: React.FC = () => {
         <PhoneFrame enterFrame={T.phoneIn} x={380} hand={A("hand_hold.png")}
           overlay={<FingerTap src={A("finger_tap_po.png")} tip={[881, 161]} imgSize={1024} scale={1.0}
             target={[200, 713]} start={T.arTap - 30} tapAt={T.arTap} end={T.arTap + 44} from={[-560, 500]} />}>
-          {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} doneLabel="✓ 已辨識・開啟 AR 探索" />}
+          {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} qr={SCAN_QR} doneLabel="✓ 已辨識・開啟 AR 探索" />}
           {frame >= T.scanEnd && (
             <>
               <Img src={staticFile(A("app_ar_before.png"))} style={{ position: "absolute", width: "100%", opacity: 1 - revealP }} />

@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { EndCard, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
+import { EndCard, FONT, PhoneFrame, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
 
 // ═══ 每日任務示範（組立工場練習所）──30fps，總長 16s＝480f ═══
 // 腳本：PO 每日任務_W0710 pptx 五拍——開場任務頁→五機具列表→地圖→遊玩+掃機台QR記進度→完玩領證書
@@ -19,6 +19,8 @@ const T = {
   total: 480,
 };
 const A = (p: string) => `asembly/quest/${p}`;
+const SCENE_QR = { x: 605, y: 598, size: 52 };
+const SCAN_QR = { x: 216, y: 601, size: 140 };
 const ORANGE = "#e8862d";
 const CREAM = "#faf7f2";
 
@@ -170,6 +172,10 @@ export const QuestDemo: React.FC = () => {
       <Sequence from={0} durationInFrames={T.listStart}>
         <TitleCard index={4} title="每日任務" subtitle="依地圖完成五項機具任務，掃描機台 QR 記錄進度" enterFrame={10} />
       </Sequence>
+      <Sequence from={T.drillBg} durationInFrames={T.progAt - T.drillBg}>
+        <SceneQrCallout src={A("qr_quest_gold.png")} enterFrame={4} target={SCENE_QR}
+          card={{ x: 70, y: 300, width: 240 }} />
+      </Sequence>
 
       {/* 手機（全程手持；本片開場即開手機，不掃碼進入） */}
       {frame >= T.phoneIn - 5 && (
@@ -177,7 +183,7 @@ export const QuestDemo: React.FC = () => {
           {frame < T.listStart && <TaskHome />}
           {frame >= T.listStart && frame < T.mapStart && <TaskList from={T.listStart + 4} />}
           {frame >= T.mapStart && frame < T.drillBg && <MapScreen />}
-          {frame >= T.drillBg && frame < T.progAt && <ScanView bg={A("scan_panel.png")} from={T.drillBg + 5} to={T.progAt} scanLabel="相機・對準機台 QR" doneLabel="✓ 已辨識・任務進度已記錄" />}
+          {frame >= T.drillBg && frame < T.progAt && <ScanView bg={A("scan_panel.png")} from={T.drillBg + 5} to={T.progAt} qr={SCAN_QR} scanLabel="相機・對準機台 QR" doneLabel="✓ 已辨識・任務進度已記錄" />}
           {frame >= T.progAt && frame < T.doneAt && <ProgressScreen toast={frame < T.progAt + 70} />}
           {frame >= T.doneAt && <DoneScreen />}
         </PhoneFrame>

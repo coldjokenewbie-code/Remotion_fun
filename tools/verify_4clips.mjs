@@ -28,15 +28,18 @@ const minimumScanSizes = {
 };
 
 const expectedScanHashes = {
-  airraid: "a882a3e0901aae2eb70f15539fe635cd99c3e6d10d296aec53224259ab9a3c66",
-  ardemo: "e0fe92f87b19fcc60dabbad6f7225501be2dfbabd334cd49edac51acc5450315",
-  memory: "55210726067e31a7991881d5a36f5c4b94aff1823ea45f785d834ae7d47d8f18",
-  quest: "438aa1d65f9b20e237df9de0f70db8f55df49bcafa0a2af7d1e118042481f983",
+  airraid: "8897f3ba9292b3bd6937fa3b863eab655a508ff1a744b4150ca8cec2f980d397",
+  ardemo: "156654e848ab049fc669c5204298c24b4f8055cce14e63753c0c80631a72a1ae",
+  memory: "4f1abe2942ffa3ab95e8fc82d3e25877ab4f9264065c3f077396ed4c083fda16",
+  quest: "ed907eda935299b35dfd1a1ef42a6e5cf3053744d24a2c0876cbf005c97eb31e",
 };
 
 const narrationLimits = {
-  airraid: ["vo_airraid_guide_tw.mp3", 14],
-  memory: ["vo_memory_invite_tw.mp3", 9],
+  airraid: [
+    ["vo_airraid_guide_tw.mp3", 10, 12],
+    ["vo_s3_ja_v2.mp3", 5, 7],
+  ],
+  memory: [["vo_memory_invite_tw.mp3", 7, 9]],
 };
 
 const getObjectBody = (source, name) => {
@@ -45,7 +48,7 @@ const getObjectBody = (source, name) => {
 };
 
 const qrPython = process.env.QR_PYTHON
-  ?? "/private/tmp/ody-asembly-4clips-v6/venv/bin/python";
+  ?? "/private/tmp/ody-asembly-4clips-v7/venv/bin/python";
 
 const checkQr = (scanPanel, qrReference) => {
   const result = spawnSync(qrPython, [
@@ -62,19 +65,30 @@ const checkQr = (scanPanel, qrReference) => {
 };
 
 const checkNarrationDuration = (assetDir) => {
-  const limit = narrationLimits[assetDir];
-  if (!limit) return;
-  const [file, maxSeconds] = limit;
-  const audio = path.join("public/asembly", assetDir, file);
-  const result = spawnSync("ffprobe", [
-    "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", audio,
-  ], { encoding: "utf8" });
-  const seconds = Number(result.stdout.trim());
-  if (result.status !== 0 || !Number.isFinite(seconds) || seconds > maxSeconds) {
-    fail(`${file} 音長 ${result.stdout.trim() || "無法讀取"}s，須 <= ${maxSeconds}s`);
+  const limits = narrationLimits[assetDir] ?? [];
+  for (const [file, minSeconds, maxSeconds] of limits) {
+    const audio = path.join("public/asembly", assetDir, file);
+    const result = spawnSync("ffprobe", [
+      "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", audio,
+    ], { encoding: "utf8" });
+    const seconds = Number(result.stdout.trim());
+    if (result.status !== 0 || !Number.isFinite(seconds) || seconds < minSeconds || seconds > maxSeconds) {
+      fail(`${file} 音長 ${result.stdout.trim() || "無法讀取"}s，須為 ${minSeconds}–${maxSeconds}s`);
+      continue;
+    }
+    console.log(`PASS TTS: ${file} ${seconds.toFixed(2)}s（${minSeconds}–${maxSeconds}s）`);
+  }
+};
+
+const checkAlignment = () => {
+  const alignmentPython = process.env.ALIGN_PYTHON
+    ?? "/private/tmp/ody-asembly-4clips-v7/venv/bin/python";
+  const result = spawnSync(alignmentPython, ["tools/check_alignment.py"], { encoding: "utf8" });
+  if (result.status !== 0) {
+    fail(`對齊機檢失敗: ${result.stderr || result.stdout}`);
     return;
   }
-  console.log(`PASS TTS: ${file} ${seconds.toFixed(2)}s <= ${maxSeconds}s`);
+  console.log(result.stdout.trim());
 };
 
 const indexSource = fs.readFileSync(path.join("src", "index.tsx"), "utf8");
@@ -92,7 +106,9 @@ for (const [file, index, assetDir, hasNarration, qrFile] of clips) {
   const voices = Object.fromEntries([...getObjectBody(source, "VO").matchAll(/(\w+):\s*(\d+)/g)].map((match) => [match[1], Number(match[2])]));
   const audioKeys = [...source.matchAll(/<Sequence from=\{VO\.(\w+)\}><Audio/g)].map((match) => match[1]);
   if (!Number.isFinite(start)) fail(`${file} 缺少功能段常數`);
-  if (total < 300 || total > 600) fail(`${file} 總長 ${total}f 不在 300–600f`);
+  // PO 20260720 語音配比指示：01 需容納中文 10–12s＋日文 5–7s，單獨放寬。
+  const maxFrames = assetDir === "airraid" ? 780 : 600;
+  if (total < 300 || total > maxFrames) fail(`${file} 總長 ${total}f 不在 300–${maxFrames}f`);
   if (total !== registeredDuration) fail(`${file} 總長 ${total}f 與 composition ${registeredDuration}f 不一致`);
   if (hasNarration && audioKeys.length === 0) fail(`${file} 缺少功能段 Audio`);
   if (!hasNarration && (audioKeys.length > 0 || /<Audio\b/.test(source))) fail(`${file} 不得含旁白 Audio`);
@@ -111,17 +127,18 @@ for (const [file, index, assetDir, hasNarration, qrFile] of clips) {
       fail(`${file} 掃描近拍解析度 ${actual.width}×${actual.height}，低於 ${minimum.width}×${minimum.height}`);
     }
     const hash = crypto.createHash("sha256").update(fs.readFileSync(scanPanel)).digest("hex");
-    if (hash !== expectedScanHashes[assetDir]) fail(`${file} 的 scan_panel.png 在第二輪遭修改`);
+    if (hash !== expectedScanHashes[assetDir]) fail(`${file} 的 v7 scan_panel.png 與同源裁圖基準不符`);
   }
   if (["airraid", "memory"].includes(assetDir)) {
     const scanFrames = scanEnd - (phoneIn + 10);
     const titleAt = Number(source.match(/TitleCard[^>]+enterFrame=\{(\d+)\}/)?.[1]);
-    const qrAt = Number(source.match(/<QrCallout enterFrame=\{(\d+)\}/)?.[1]);
+    const qrAt = Number(source.match(/<SceneQrCallout[^>]+enterFrame=\{(\d+)\}/)?.[1]);
     if (scanFrames < 75) fail(`${file} 掃描動畫僅 ${scanFrames}f，須至少 75f`);
     if (!(titleAt < qrAt && qrAt < phoneIn && scanEnd === start)) fail(`${file} 開場未依標示卡→QR 示意→掃描→功能排序`);
-    if (!source.includes("不妨掃描")) fail(`${file} 未保留克制邀約語`);
+    if (source.includes("不妨掃描")) fail(`${file} 仍含已刪除的「不妨掃描」句`);
   }
-  if (assetDir === "airraid" && /app_jp|VO\.japanese|vo_s3_ja/.test(source)) fail(`${file} 自行恢復日文段`);
+  if (assetDir === "airraid" && (!/app_jp/.test(source) || !/VO\.japanese/.test(source) || !/vo_s3_ja/.test(source))) fail(`${file} 未恢復完整日文段`);
+  if (assetDir === "airraid" && (!source.includes("多語服務") || !source.includes("中・英・日"))) fail(`${file} 缺少多語服務字卡`);
   if (assetDir === "quest" && (!source.includes('A("cert_filled.png")') || source.includes('A("cert_paper.png")'))) fail(`${file} 手機完成頁未使用已填寫證書`);
   const audioResult = hasNarration ? `Audio >= ${start}f` : "無旁白 Audio";
   checkNarrationDuration(assetDir);
@@ -129,4 +146,5 @@ for (const [file, index, assetDir, hasNarration, qrFile] of clips) {
   console.log(`PASS ${file}: ${audioResult}, 統一版式, 展板近拍`);
 }
 
+checkAlignment();
 if (!process.exitCode) console.log("PASS 四支導覽靜態驗收");
