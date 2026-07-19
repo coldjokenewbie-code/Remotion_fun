@@ -2,21 +2,21 @@ import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { EndCard, FingerTap, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
 
-// ═══ 時間軸常數（30fps，總長 24.2s＝726f；要改節奏改這裡）═══════════
+// ═══ 時間軸常數（30fps，總長 34.23s＝1027f；要改節奏改這裡）═══════════
 // 空間圖 v3（PO 提供 0B-7 展台渲染三連）：scene1 亮景全景 → scene2 暗景中景（QR 聚光）→ scene3 近景正視
-// 開場靜音；功能旁白：guide=9.98s(300f)、日文切換=4.80s(144f)
+// 開場靜音；功能旁白：微台版 guide=20.01s(601f)、日文 Keita=4.80s(144f)
 const T = {
   s2aStart: 120,     // 段2a：切暗景中景，推向 QR 聚光（4.0s）
   s2bStart: 174,     // 段2b：切近景正視（5.8s）
   phoneIn: 180,      // 手機入鏡（6.0s）
   functionStart: 232,// 功能介紹開始；此前保持無旁白
   scanEnd: 232,      // 掃描完成→跳轉 App（7.7s）
-  s4Start: 542,      // 段4：手指移向 JP（18.1s）
-  jpSwitch: 562,     // 日文介面切換點（18.7s）
-  fadeOut: 700,      // 結尾淡出（23.3s）
-  total: 726,
+  s4Start: 843,      // 段4：手指移向 JP（28.1s）
+  jpSwitch: 863,     // 日文介面切換點（28.8s）
+  fadeOut: 1001,     // 結尾淡出（33.4s）
+  total: 1027,
 };
-const VO = { guide: 240, japanese: 568 };
+const VO = { guide: 240, japanese: 869 };
 
 const A = (p: string) => `asembly/airraid/${p}`;
 // 聚光點（PIL 亮度質心量測，objectFit cover 換算後畫布座標）
@@ -108,15 +108,15 @@ export const AirRaidDemo: React.FC = () => {
       )}
 
       {/* 功能旁白（開場段無音軌） */}
-      <Sequence from={VO.guide}><Audio src={staticFile(A("vo_s2_guide_v2.mp3"))} /></Sequence>
+      <Sequence from={VO.guide}><Audio src={staticFile(A("vo_airraid_guide_tw.mp3"))} /></Sequence>
       <Sequence from={VO.japanese}><Audio src={staticFile(A("vo_s3_ja_v2.mp3"))} volume={(f) => interpolate(f, [120, 150], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} /></Sequence>
 
       {/* 字幕 */}
       <Subtitle lines={[
-        { text: "掃描展板 QR，即可開啟語音導覽。", from: VO.guide, to: 320 },
-        { text: "1944 年，空襲警報劃過組立工場上空。", from: 320, to: 380 },
-        { text: "抬頭看，桁架上變形的痕跡，就是歷史的證據。", from: 380, to: 540 },
-        { text: "頭上の鉄骨には、空襲の傷跡が残っています。", small: "（頭上鋼架，仍留著空襲的傷痕。）", from: VO.japanese, to: 714 },
+        { text: "掃描展板 QR，即可開啟語音導覽。", from: VO.guide, to: 414 },
+        { text: "1944 年，空襲警報劃過組立工場上空。", from: 414, to: 621 },
+        { text: "抬頭看，桁架上變形的痕跡，就是歷史的證據。", from: 621, to: 841 },
+        { text: "頭上の鉄骨には、空襲の傷跡が残っています。", small: "（頭上鋼架，仍留著空襲的傷痕。）", from: VO.japanese, to: 1015 },
       ]} />
 
       {/* 結尾淡出＋落款 */}

@@ -2,20 +2,20 @@ import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { EndCard, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
 
-// ═══ 記憶中的聲音示範 v2（0B-3 職工的回憶）──30fps，總長 19.6s＝588f ═══
+// ═══ 記憶中的聲音示範 v2（0B-3 職工的回憶）──30fps，總長 30.17s＝905f ═══
 // 場景：PO 提供 OB-3 三連（scene1 亮景→scene2 訪客舉手機→scene3 暗景聚光）
-// 開場靜音；功能段播放人才培育真素材節錄 9.5s(285f)
+// 開場靜音；功能段微台版邀請旁白 10.29s(309f)，再播人才培育真素材節錄 9.5s(285f)
 const T = {
   s2aStart: 120,
   s2bStart: 174,
   phoneIn: 186,
   functionStart: 244,
   scanEnd: 244,
-  progSwap: 387,     // 播放進度截圖切換（真實進度條）
-  fadeOut: 560,
-  total: 588,
+  progSwap: 704,     // 播放進度截圖切換（真實進度條）
+  fadeOut: 877,
+  total: 905,
 };
-const VO = { memory: 252 };
+const VO = { invite: 252, memory: 569 };
 
 const A = (p: string) => `asembly/memory/${p}`;
 const QR1 = { x: 130, y: 381 };          // scene1 立牌 QR 畫布基準（抽幀校核）
@@ -98,14 +98,16 @@ export const MemoryVoiceDemo: React.FC = () => {
         </PhoneFrame>
       )}
 
-      {/* 功能段聲音：人才培育原始音檔節錄（真素材） */}
+      {/* 功能段聲音：微台版邀請旁白 → 人才培育原始音檔節錄（真素材） */}
+      <Sequence from={VO.invite}><Audio src={staticFile(A("vo_memory_invite_tw.mp3"))} /></Sequence>
       <Sequence from={VO.memory}><Audio src={staticFile(A("vo_s2_memory_excerpt.mp3"))} /></Sequence>
 
       {/* 字幕 */}
       <Subtitle lines={[
-        { text: "掃描展板 QR，即可開啟記憶中的聲音。", from: VO.memory, to: 330 },
-        { text: "1938 年，由臺北鐵道工技手新鄉重夫，", from: 330, to: 400 },
-        { text: "倡議設立技工見習教習所（戰後改為技工養成所）。", from: 400, to: 535 },
+        { text: "這裡留著前輩們的聲音記憶。", from: VO.invite, to: 402 },
+        { text: "掃一下 QR Code，聽聽當年的故事。", from: 402, to: 561 },
+        { text: "1938 年，由臺北鐵道工技手新鄉重夫，", from: VO.memory, to: 717 },
+        { text: "倡議設立技工見習教習所（戰後改為技工養成所）。", from: 717, to: 852 },
       ]} />
 
       {/* 結尾淡出＋落款 */}

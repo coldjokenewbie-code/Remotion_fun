@@ -1,10 +1,10 @@
 import React from "react";
-import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { EndCard, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
 
 // ═══ 每日任務示範（組立工場練習所）──30fps，總長 26s＝780f ═══
 // 腳本：PO 每日任務_W0710 pptx 五拍——開場任務頁→五機具列表→地圖→遊玩+掃機台QR記進度→完玩領證書
-// 開場靜音；功能旁白 YunJhe -8%/-4Hz：tasks=7.54s progress=5.50s finish=5.83s
+// 本片無旁白；以字幕串接五段功能敘事
 const T = {
   phoneIn: 60,       // 訪客打開手機（開場即進任務頁，本片不掃碼開場）
   functionStart: 140,// 功能介紹開始；此前保持無旁白
@@ -18,8 +18,6 @@ const T = {
   fadeOut: 756,
   total: 780,
 };
-const VO = { tasks: 140, progress: 380, finish: 560 };
-
 const A = (p: string) => `asembly/quest/${p}`;
 const ORANGE = "#e8862d";
 const CREAM = "#faf7f2";
@@ -185,16 +183,11 @@ export const QuestDemo: React.FC = () => {
         </PhoneFrame>
       )}
 
-      {/* 旁白 */}
-      <Sequence from={VO.tasks}><Audio src={staticFile(A("vo_q2.mp3"))} /></Sequence>
-      <Sequence from={VO.progress}><Audio src={staticFile(A("vo_q3.mp3"))} /></Sequence>
-      <Sequence from={VO.finish}><Audio src={staticFile(A("vo_q4.mp3"))} /></Sequence>
-
       {/* 字幕 */}
       <Subtitle lines={[
-        { text: "每日任務會帶你找到五座機具，一關一關完成挑戰。", from: VO.tasks, to: 370 },
-        { text: "每過一關，掃描機台上的 QR，進度會自動記錄。", from: VO.progress, to: 550 },
-        { text: "五關全過，結業證書領回家——恭喜畢業！", from: VO.finish, to: 740 },
+        { text: "每日任務會帶你找到五座機具，一關一關完成挑戰。", from: 140, to: 370 },
+        { text: "每過一關，掃描機台上的 QR，進度會自動記錄。", from: 380, to: 550 },
+        { text: "五關全過，結業證書領回家——恭喜畢業！", from: 560, to: 740 },
       ]} />
 
       {/* 結尾淡出＋落款 */}

@@ -1,10 +1,10 @@
 import React from "react";
-import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { EndCard, FingerTap, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
 
 // ═══ AR 導覽功能示範（G-1-3 機坑×台工1677）──時間軸常數（30fps，總長 22.6s＝678f）═══
 // 空間圖：PO 提供 G-3-機坑三連（scene1 亮景全景→scene2 訪客舉手機→scene3 調暗＋說明牌 QR 聚光）
-// 開場靜音；功能旁白 reveal=12.98s(390f)（YunJhe -8%/-4Hz）
+// 本片無旁白；以字幕串接功能敘事
 const T = {
   s2aStart: 120,     // 段2a：切訪客舉手機視角（4.0s）
   s2bStart: 174,     // 段2b：切暗景聚光，推向說明牌 QR（5.8s）
@@ -16,8 +16,6 @@ const T = {
   fadeOut: 650,      // 結尾淡出（21.7s）
   total: 678,
 };
-const VO = { reveal: 252 };
-
 const A = (p: string) => `asembly/ardemo/${p}`;
 // scene1 說明牌 QR 畫布座標（cover 換算 scale=1 基準）；scene3 聚光點（畫面百分比）
 const QR1 = { x: 611, y: 533 }; // 面板上橘色 AR QR（面板另有綠色語音導覽 QR，勿圈錯）
@@ -104,12 +102,9 @@ export const ARDemo: React.FC = () => {
         </PhoneFrame>
       )}
 
-      {/* 旁白 */}
-      <Sequence from={VO.reveal}><Audio src={staticFile(A("vo_ar_s2_reveal.mp3"))} /></Sequence>
-
       {/* 字幕 */}
       <Subtitle lines={[
-        { text: "掃描展板 QR，即可開啟 AR 探索。", from: VO.reveal, to: 330 },
+        { text: "掃描展板 QR，即可開啟 AR 探索。", from: 252, to: 330 },
         { text: "台工一六七七高速車輪鏇床，現在人在富岡機廠。", from: 330, to: 424 },
         { text: "用 AR，我把它請回原本的位置——", from: 424, to: 540 },
         { text: "你看，這就是當年的氣勢。", from: 540, to: 644 },

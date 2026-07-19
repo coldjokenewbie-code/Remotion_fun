@@ -12,7 +12,7 @@ const RemotionRoot: React.FC = () => {
       <Composition
         id="AirRaidDemo"
         component={AirRaidDemo}
-        durationInFrames={726}
+        durationInFrames={1027}
         fps={30}
         width={1920}
         height={1080}
@@ -28,7 +28,7 @@ const RemotionRoot: React.FC = () => {
       <Composition
         id="MemoryVoiceDemo"
         component={MemoryVoiceDemo}
-        durationInFrames={588}
+        durationInFrames={905}
         fps={30}
         width={1920}
         height={1080}
