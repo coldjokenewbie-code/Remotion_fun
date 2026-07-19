@@ -1,23 +1,24 @@
 import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { FONT, PhoneFrame, Subtitle, TitleCard } from "./shared";
+import { EndCard, FONT, PhoneFrame, ScanView, Subtitle, TitleCard } from "./shared";
 
 // ═══ 每日任務示範（組立工場練習所）──30fps，總長 26s＝780f ═══
 // 腳本：PO 每日任務_W0710 pptx 五拍——開場任務頁→五機具列表→地圖→遊玩+掃機台QR記進度→完玩領證書
-// 旁白 YunJhe -8%/-4Hz：q1=3.98s q2=7.54s q3=5.50s q4=5.83s
+// 開場靜音；功能旁白 YunJhe -8%/-4Hz：tasks=7.54s progress=5.50s finish=5.83s
 const T = {
   phoneIn: 60,       // 訪客打開手機（開場即進任務頁，本片不掃碼開場）
+  functionStart: 140,// 功能介紹開始；此前保持無旁白
   listStart: 140,    // 五機具卡陸續滑入
   mapStart: 260,     // 地圖頁
   playBg: 300,       // 背景切遊玩照片
   drillBg: 380,      // 背景切鑽削挑戰機台（畫面含 QR）
-  progAt: 410,       // 掃描登入→進度 3/5
+  progAt: 440,       // 掃描登入→進度 3/5
   certBg: 555,       // 背景切證書機台（畫面含 QR）
   doneAt: 565,       // 手機 5/5 完成+證書
   fadeOut: 756,
   total: 780,
 };
-const VO = { q1: 9, q2: 140, q3: 380, q4: 560 };
+const VO = { tasks: 140, progress: 380, finish: 560 };
 
 const A = (p: string) => `asembly/quest/${p}`;
 const ORANGE = "#e8862d";
@@ -142,30 +143,34 @@ const KioskBg: React.FC<{ src: string; inAt: number }> = ({ src, inAt }) => {
   );
 };
 
-export const QuestDemo: React.FC = () => {
+const QuestBackground: React.FC = () => {
   const frame = useCurrentFrame();
   const hallScale = interpolate(frame, [0, T.playBg], [1.04, 1.12]);
   const playIn = interpolate(frame, [T.playBg, T.playBg + 14], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  return <>
+    {frame < T.playBg + 14 && <Img src={staticFile(A("scene_hall.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${hallScale})` }} />}
+    {frame >= T.playBg && frame < T.drillBg && (
+      <div style={{ position: "absolute", inset: 0, opacity: playIn }}>
+        <Img src={staticFile(A("scene_play.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
+      </div>
+    )}
+    {frame >= T.drillBg && frame < T.certBg && <KioskBg src={A("kiosk_drill.png")} inAt={T.drillBg} />}
+    {frame >= T.certBg && <KioskBg src={A("kiosk_cert.png")} inAt={T.certBg} />}
+    <div style={{ position: "absolute", inset: 0, background: `rgba(5,8,14,${frame >= T.playBg ? 0.25 : 0})` }} />
+  </>;
+};
+
+export const QuestDemo: React.FC = () => {
+  const frame = useCurrentFrame();
   const fade = interpolate(frame, [T.fadeOut, T.total - 6], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
     <AbsoluteFill style={{ background: "#000", fontFamily: FONT }}>
-      {/* 背景四幕：練習所大廳→遊玩照→鑽削機台(含QR)→證書機台(含QR) */}
-      {frame < T.playBg + 14 && (
-        <Img src={staticFile(A("scene_hall.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${hallScale})` }} />
-      )}
-      {frame >= T.playBg && frame < T.drillBg && (
-        <div style={{ position: "absolute", inset: 0, opacity: playIn }}>
-          <Img src={staticFile(A("scene_play.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
-        </div>
-      )}
-      {frame >= T.drillBg && frame < T.certBg && <KioskBg src={A("kiosk_drill.png")} inAt={T.drillBg} />}
-      {frame >= T.certBg && <KioskBg src={A("kiosk_cert.png")} inAt={T.certBg} />}
-      <div style={{ position: "absolute", inset: 0, background: `rgba(5,8,14,${frame >= T.playBg ? 0.25 : 0})` }} />
+      <QuestBackground />
 
       {/* 段1 標示卡 */}
       <Sequence from={0} durationInFrames={T.listStart}>
-        <TitleCard title="每日任務" subtitle="成為組立工場技工——組立工場練習所" enterFrame={10} />
+        <TitleCard index={4} title="每日任務" subtitle="示範情境：組立工場練習所" enterFrame={10} />
       </Sequence>
 
       {/* 手機（全程手持；本片開場即開手機，不掃碼進入） */}
@@ -173,33 +178,28 @@ export const QuestDemo: React.FC = () => {
         <PhoneFrame enterFrame={T.phoneIn} x={380} hand={A("hand_hold.png")}>
           {frame < T.listStart && <TaskHome />}
           {frame >= T.listStart && frame < T.mapStart && <TaskList from={T.listStart + 4} />}
-          {frame >= T.mapStart && frame < T.progAt && <MapScreen />}
+          {frame >= T.mapStart && frame < T.drillBg && <MapScreen />}
+          {frame >= T.drillBg && frame < T.progAt && <ScanView bg={A("scan_panel.png")} from={T.drillBg + 5} to={T.progAt} scanLabel="相機・對準機台 QR" doneLabel="✓ 已辨識・任務進度已記錄" />}
           {frame >= T.progAt && frame < T.doneAt && <ProgressScreen toast={frame < T.progAt + 70} />}
           {frame >= T.doneAt && <DoneScreen />}
         </PhoneFrame>
       )}
 
       {/* 旁白 */}
-      <Sequence from={VO.q1}><Audio src={staticFile(A("vo_q1.mp3"))} /></Sequence>
-      <Sequence from={VO.q2}><Audio src={staticFile(A("vo_q2.mp3"))} /></Sequence>
-      <Sequence from={VO.q3}><Audio src={staticFile(A("vo_q3.mp3"))} /></Sequence>
-      <Sequence from={VO.q4}><Audio src={staticFile(A("vo_q4.mp3"))} /></Sequence>
+      <Sequence from={VO.tasks}><Audio src={staticFile(A("vo_q2.mp3"))} /></Sequence>
+      <Sequence from={VO.progress}><Audio src={staticFile(A("vo_q3.mp3"))} /></Sequence>
+      <Sequence from={VO.finish}><Audio src={staticFile(A("vo_q4.mp3"))} /></Sequence>
 
       {/* 字幕 */}
       <Subtitle lines={[
-        { text: "今天的任務——成為組立工場的技工！", from: VO.q1, to: 133 },
-        { text: "車、銑、鑽、搪、鉋，五種功夫，跟著地圖一關一關來。", from: VO.q2, to: 370 },
-        { text: "每過一關，掃一下機台上的 QR code，進度幫你記著。", from: VO.q3, to: 550 },
-        { text: "五關全過，結業證書領回家——恭喜畢業！", from: VO.q4, to: 740 },
+        { text: "每日任務會帶你找到五座機具，一關一關完成挑戰。", from: VO.tasks, to: 370 },
+        { text: "每過一關，掃描機台上的 QR，進度會自動記錄。", from: VO.progress, to: 550 },
+        { text: "五關全過，結業證書領回家——恭喜畢業！", from: VO.finish, to: 740 },
       ]} />
 
       {/* 結尾淡出＋落款 */}
       <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-      {fade > 0.6 && (
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: (fade - 0.6) / 0.4 }}>
-          <div style={{ color: "#e8ecf2", fontSize: 34, letterSpacing: 6, fontWeight: 600 }}>組立工場行動導覽・每日任務</div>
-        </div>
-      )}
+      <EndCard feature="每日任務" index={4} fade={fade} isFinal />
     </AbsoluteFill>
   );
 };

@@ -4,7 +4,7 @@ import { Easing, interpolate, spring, useCurrentFrame, useVideoConfig, staticFil
 export const FONT = '"Noto Sans TC", "PingFang TC", "Heiti TC", sans-serif';
 
 // ── 標示卡（左上：展項名稱＋簡介）──────────────────────────────
-export const TitleCard: React.FC<{ title: string; subtitle: string; enterFrame: number }> = ({ title, subtitle, enterFrame }) => {
+export const TitleCard: React.FC<{ title: string; subtitle: string; enterFrame: number; index: number }> = ({ title, subtitle, enterFrame, index }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const p = spring({ frame: frame - enterFrame, fps, config: { damping: 200 } });
@@ -15,7 +15,8 @@ export const TitleCard: React.FC<{ title: string; subtitle: string; enterFrame: 
       background: "rgba(15,18,25,0.78)", backdropFilter: "blur(6px)",
       borderLeft: "6px solid #ff8a3d", borderRadius: 10, padding: "22px 30px", fontFamily: FONT,
     }}>
-      <div style={{ color: "#fff", fontSize: 44, fontWeight: 700, letterSpacing: 2 }}>{title}</div>
+      <div style={{ color: "#ffad73", fontSize: 18, fontWeight: 800, letterSpacing: 4 }}>導覽功能 {String(index).padStart(2, "0")} / 04</div>
+      <div style={{ color: "#fff", fontSize: 44, fontWeight: 700, letterSpacing: 2, marginTop: 8 }}>{title}</div>
       <div style={{ color: "#d8dde6", fontSize: 24, marginTop: 8, letterSpacing: 1 }}>{subtitle}</div>
     </div>
   );
@@ -102,7 +103,6 @@ export const FingerTap: React.FC<{
   const disp = Math.min(1, (1 - tIn) + back);
   const dx = from[0] * disp;
   const dy = from[1] * disp;
-  const appear = back < 0.7 ? 1 : 1 - (back - 0.7) / 0.3; // 僅離場末端（已在暗背景上）淡出防跳切
   const press = frame >= tapAt - 2 && frame < tapAt + 4 ? 0.96 : 1; // 指尖下壓
   const x = target[0] + dx, y = target[1] + dy;
   const rippleT = frame >= tapAt ? Math.min(1, (frame - tapAt) / 12) : 0;
@@ -119,7 +119,7 @@ export const FingerTap: React.FC<{
       <Img src={staticFile(src)} style={{
         position: "absolute", left: x - tip[0] * scale, top: y - tip[1] * scale,
         width: imgSize * scale, height: imgSize * scale, maxWidth: "none",
-        opacity: appear, pointerEvents: "none",
+        pointerEvents: "none",
         transform: `scale(${press})`, transformOrigin: `${tip[0] * scale}px ${tip[1] * scale}px`,
         filter: "drop-shadow(-6px 10px 14px rgba(0,0,0,0.35))",
       }} />
@@ -128,21 +128,22 @@ export const FingerTap: React.FC<{
 };
 
 // ── 掃描視圖（相機畫面：背景＋QR＋掃描線）───────────────────────
-export const ScanView: React.FC<{ bg: string; qr: string; from: number; to: number; doneLabel?: string }> = ({ bg, qr, from, to, doneLabel = "✓ 已辨識・開啟語音導覽" }) => {
+export const ScanView: React.FC<{
+  bg: string; from: number; to: number; scanLabel?: string; doneLabel?: string;
+}> = ({ bg, from, to, scanLabel = "相機・對準展板 QR", doneLabel = "✓ 已辨識・開啟導覽功能" }) => {
   const frame = useCurrentFrame();
   const t = interpolate(frame, [from, to], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const scanY = 260 + 300 * (0.5 - 0.5 * Math.cos(t * Math.PI * 4)); // 上下掃兩趟
   const locked = t > 0.82;
   return (
     <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
-      <Img src={staticFile(bg)} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.6)", filter: "brightness(0.9)" }} />
+      <Img src={staticFile(bg)} style={{
+        position: "absolute", width: "100%", height: "100%", objectFit: "cover",
+        transform: "scale(1.02)", filter: "brightness(0.9)",
+      }} />
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.28)" }} />
-      {/* QR 在畫面中央 */}
-      <div style={{
-        position: "absolute", left: "50%", top: "44%", transform: "translate(-50%,-50%)",
-        background: "#fff", padding: 12, borderRadius: 10, boxShadow: locked ? "0 0 0 5px #35d07f" : "none",
-      }}>
-        <Img src={staticFile(qr)} style={{ width: 150, height: 150 }} />
+      <div style={{ position: "absolute", top: 28, left: 0, width: "100%", color: "#fff", textAlign: "center", fontFamily: FONT, fontSize: 17, fontWeight: 700, letterSpacing: 2 }}>
+        <span style={{ background: "rgba(0,0,0,0.62)", padding: "7px 12px", borderRadius: 16 }}>{scanLabel}</span>
       </div>
       {/* 取景框四角 */}
       {([[0, 0], [1, 0], [0, 1], [1, 1]] as const).map(([cx, cy], i) => (
@@ -161,6 +162,19 @@ export const ScanView: React.FC<{ bg: string; qr: string; from: number; to: numb
           {doneLabel}
         </div>
       )}
+    </div>
+  );
+};
+
+export const EndCard: React.FC<{ feature: string; index: number; fade: number; isFinal?: boolean }> = ({ feature, index, fade, isFinal = false }) => {
+  if (fade <= 0.6) return null;
+  const opacity = (fade - 0.6) / 0.4;
+  return (
+    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity, fontFamily: FONT }}>
+      <div style={{ color: "#e8ecf2", textAlign: "center" }}>
+        <div style={{ color: "#ffad73", fontSize: 17, fontWeight: 800, letterSpacing: 4 }}>{isFinal ? "組立工場行動導覽" : `導覽功能 ${String(index).padStart(2, "0")} / 04`}</div>
+        <div style={{ fontSize: 34, letterSpacing: 6, fontWeight: 600, marginTop: 12 }}>{isFinal ? "四種方式，走進工場故事" : feature}</div>
+      </div>
     </div>
   );
 };
