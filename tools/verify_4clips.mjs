@@ -28,10 +28,15 @@ const minimumScanSizes = {
 };
 
 const expectedScanHashes = {
-  airraid: "b0b4c4f1488a196538ab445ba18187860e7896fb25a87606a17899941dbbcd91",
+  airraid: "abfadd34cbfe386ab1533f78057b1895983751cdce11fb92afb02a102c4053f9",
   ardemo: "30e907cf773a862a28a4608630dff9f5917893b4ccd328bd0debabd40d4fc200",
-  memory: "f6262a4f70e88b38db9474e62ab2c7b1c68e7c3ff676faa23638a632a9f741d9",
+  memory: "abfa7c27806c39a3c7e2d070c9717f1c39f5388a3ad5cf56c9445f1fe3a431cf",
   quest: "7b4cec27c3ff3d8f29ed561aaa63f65165650883049fe1eb80e0df62add41827",
+};
+
+const expectedHeroHashes = {
+  "app_tw_play.png": "2280e7bb08c2948c53c46f20e24a22611154c85b5fe181a35d73536cb5996b2b",
+  "app_jp_play.png": "3e064c68e6a0211cd2604a34d0bf17fb265e01b8950ba76feced789100aea686",
 };
 
 const narrationLimits = {
@@ -102,6 +107,17 @@ if (!hasSharedProjection) {
   fail("v7.2 未以同一相機矩陣投影原圖與 corner-pin QR");
 }
 if (/\.paste\s*\(/.test(panelPipeline)) fail("v7.2 禁止裁切後 paste QR");
+if (!panelPipeline.includes("equalize_radial_highlight(panel, item)") ||
+    !panelPipeline.includes("inpaint_airraid_photo(panel, item)") ||
+    !panelPipeline.includes("inpaint_memory_arc(panel, item)") ||
+    panelPipeline.includes("clean_source")) {
+  fail("v7.3 必須保留原裁切並執行亮度均衡／局部去弧，禁止整張替代來源");
+}
+for (const [file, expectedHash] of Object.entries(expectedHeroHashes)) {
+  const hero = path.join("public/asembly/airraid", file);
+  const hash = crypto.createHash("sha256").update(fs.readFileSync(hero)).digest("hex");
+  if (hash !== expectedHash) fail(`${file} 的 v7.3 hero 去示意圈基準不符`);
+}
 
 for (const [file, index, assetDir, hasNarration, qrFile] of clips) {
   const source = fs.readFileSync(path.join("src/asembly", file), "utf8");
@@ -136,7 +152,7 @@ for (const [file, index, assetDir, hasNarration, qrFile] of clips) {
       fail(`${file} 掃描近拍解析度 ${actual.width}×${actual.height}，低於 ${minimum.width}×${minimum.height}`);
     }
     const hash = crypto.createHash("sha256").update(fs.readFileSync(scanPanel)).digest("hex");
-    if (hash !== expectedScanHashes[assetDir]) fail(`${file} 的 v7.2 scan_panel.png 與原圖空間基準不符`);
+    if (hash !== expectedScanHashes[assetDir]) fail(`${file} 的 v7.3 scan_panel.png 與去圈基準不符`);
   }
   if (["airraid", "memory"].includes(assetDir)) {
     const scanFrames = scanEnd - (phoneIn + 10);
