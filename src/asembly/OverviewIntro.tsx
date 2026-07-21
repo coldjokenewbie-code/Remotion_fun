@@ -1,14 +1,14 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { z } from "zod";
-import { FONT, PhoneFrame, ScanView } from "./shared";
+import { FONT, PhoneAssetFrame, PhoneBubble, PhoneFrame, ScanView } from "./shared";
 
 export const KEYFRAMES: number[] = [60, 100, 160, 235, 292, 337, 382, 427, 465];
 
 const AIR = (name: string) => `asembly/airraid/${name}`;
 const OVERVIEW = (name: string) => `asembly/overview/${name}`;
-// AirRaidDemo v7 實圖量測值（scan_panel 為 480×1040 素材座標）
-const SCAN_QR = { x: 197, y: 560, size: 115 };
+// AirRaidDemo 現行拉出面板素材座標
+const SCAN_QR = { x: 123, y: 544, size: 133 };
 
 const XFADE = 12; // 段間交叉淡變幀數
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
@@ -133,12 +133,13 @@ const IntroTitle: React.FC<{ endAt: number; 館名: string; 主標: string; 服�
   const titleOpacity = interpolate(frame, [10, 28, endAt - 15, endAt], [0, 1, 1, 0], clamp);
   const serviceOpacity = interpolate(frame, [60, 76, endAt - 8, endAt], [0, 1, 1, 0], clamp);
   const titleScale = interpolate(frame, [10, 70], [0.94, 1], clamp);
-  return <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: FONT }}>
+  {/* PO 2026-07-21：標題下移至下三分之一，避免擋住畫面中的老職工 */}
+  return <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: 56, fontFamily: FONT }}>
     <div style={{ textAlign: "center", opacity: titleOpacity, transform: `scale(${titleScale})`, color: "#fff", textShadow: "0 4px 24px rgba(0,0,0,0.7)" }}>
       <div style={{ color: "#ffad73", fontSize: 26, fontWeight: 800, letterSpacing: 8 }}>{館名}</div>
-      <div style={{ fontSize: 72, fontWeight: 700, lineHeight: 1.28, letterSpacing: 8, marginTop: 18, whiteSpace: "pre-line" }}>{主標}</div>
+      <div style={{ fontSize: 64, fontWeight: 700, lineHeight: 1.26, letterSpacing: 8, marginTop: 14, whiteSpace: "pre-line" }}>{主標}</div>
     </div>
-    <div style={{ opacity: serviceOpacity, marginTop: 42, background: "rgba(15,18,25,0.78)", borderLeft: "6px solid #ff8a3d", borderRadius: 10, padding: "18px 28px", color: "#fff", fontSize: 28, fontWeight: 600, letterSpacing: 1.5 }}>
+    <div style={{ opacity: serviceOpacity, marginTop: 28, background: "rgba(15,18,25,0.78)", borderLeft: "6px solid #ff8a3d", borderRadius: 10, padding: "16px 26px", color: "#fff", fontSize: 26, fontWeight: 600, letterSpacing: 1.5 }}>
       {服務定位}
     </div>
   </div>;
@@ -179,9 +180,11 @@ export const OverviewIntro: React.FC<OverviewIntroProps> = ({ 時間軸, 文案 
 
     {/* 段2a 掃展牌（重現 01 片 4 秒組成） */}
     <FgGroup from={T.seg2a} to={T.seg2b}>
-      <PhoneFrame enterFrame={T.seg2a + 8} x={380} hand={AIR("hand_hold.png")}>
-        <ScanView bg={AIR("scan_panel.png")} from={T.seg2a + 18} to={T.seg2b - 4} qr={SCAN_QR} doneLabel={文案.掃描完成標語} />
-      </PhoneFrame>
+      <PhoneBubble anchor={{ x: 240, y: 605 }} visibleFrom={T.seg2a + 8} visibleTo={T.seg2b}>
+        <PhoneAssetFrame src={AIR("hand_po.png")} enterFrame={T.seg2a + 8} left={-76} top={10}>
+          <ScanView bg={AIR("scan_screen_po.png")} from={T.seg2a + 18} to={T.seg2b - 4} qr={SCAN_QR} chrome={false} doneLabel={文案.掃描完成標語} />
+        </PhoneAssetFrame>
+      </PhoneBubble>
       <SmallCard title={文案.掃展牌卡.標題} subtitle={文案.掃展牌卡.副標} enterFrame={T.seg2a + 6} />
     </FgGroup>
 
