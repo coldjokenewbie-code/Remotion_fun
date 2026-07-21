@@ -5,7 +5,7 @@ import { AirRaidDemo } from "./asembly/AirRaidDemo";
 import { ARDemo } from "./asembly/ARDemo";
 import { MemoryVoiceDemo } from "./asembly/MemoryVoiceDemo";
 import { QuestDemo } from "./asembly/QuestDemo";
-import { OverviewIntro } from "./asembly/OverviewIntro";
+import { OverviewIntro, overviewIntroDefaultProps, overviewIntroSchema } from "./asembly/OverviewIntro";
 
 const RemotionRoot: React.FC = () => {
   return (
@@ -17,6 +17,9 @@ const RemotionRoot: React.FC = () => {
         fps={30}
         width={1920}
         height={1080}
+        schema={overviewIntroSchema}
+        defaultProps={overviewIntroDefaultProps}
+        calculateMetadata={({ props }) => ({ durationInFrames: props.時間軸.總長 })}
       />
       <Composition
         id="AirRaidDemo"
