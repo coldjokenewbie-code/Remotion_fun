@@ -1,23 +1,48 @@
 import React from "react";
 import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { z } from "zod";
 import { EndCard, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
 
-// ═══ 每日任務示範（組立工場練習所）──30fps，總長 16s＝480f ═══
+// ═══ 每日任務示範（組立工場練習所）──時間軸與文案由 props 控制（Studio 右欄可調）═══
 // 腳本：PO 每日任務_W0710 pptx 五拍——開場任務頁→五機具列表→地圖→遊玩+掃機台QR記進度→完玩領證書
 // 本片無旁白；以字幕串接五段功能敘事
-const T = {
-  phoneIn: 20,
-  functionStart: 60,
-  listStart: 60,
-  mapStart: 150,
-  playBg: 180,
-  drillBg: 230,
-  progAt: 285,
-  certBg: 350,
-  doneAt: 360,
-  fadeOut: 456,
-  total: 480,
-};
+const 幀 = (預設: number, 說明: string) => z.number().int().min(0).max(3000).default(預設).describe(說明);
+const 字幕列 = z.object({ 文字: z.string(), 起: z.number().int().min(0).max(3000), 訖: z.number().int().min(0).max(3000) });
+
+export const questDemoSchema = z.object({
+  時間軸: z.object({
+    手機進場: 幀(20, "拉出面板＋手機出現幀"),
+    任務清單開始: 幀(60, "任務頁→五機具清單；標示卡同時消失"),
+    地圖開始: 幀(150, "清單→地圖頁"),
+    遊玩場景: 幀(180, "背景切遊玩照"),
+    機台掃描開始: 幀(230, "背景切鑽削機台＋掃描相機畫面（拉線同步顯示）"),
+    進度更新: 幀(285, "掃描完成→進度頁 3/5（拉線於 +10 幀收起）"),
+    證書場景: 幀(350, "背景切證書機台"),
+    完成頁: 幀(360, "進度頁→完成領證頁 5/5"),
+    淡出開始: 幀(456, "結尾黑幕淡出起點"),
+    總長: 幀(480, "影片總長（幀，30fps）"),
+  }),
+  文案: z.object({
+    標題: z.string().default("每日任務"),
+    副標: z.string().default("依地圖完成五項機具任務，掃描機台 QR 記錄進度"),
+    掃描中標語: z.string().default("相機・對準機台 QR"),
+    掃描完成標語: z.string().default("✓ 已辨識・任務進度已記錄"),
+    落款: z.string().default("五項任務完成後產生結業證書"),
+    字幕: z.array(字幕列).default([
+      { 文字: "系統以地圖列出五項機具任務與所在位置。", 起: 60, 訖: 210 },
+      { 文字: "完成操作後掃描機台 QR，系統自動更新任務進度。", 起: 210, 訖: 350 },
+      { 文字: "五項任務完成後，系統產生可下載的結業證書。", 起: 350, 訖: 450 },
+    ]),
+  }),
+});
+export type QuestDemoProps = z.infer<typeof questDemoSchema>;
+export const questDemoDefaultProps: QuestDemoProps = questDemoSchema.parse({ 時間軸: {}, 文案: {} });
+
+type Timing = { phoneIn: number; listStart: number; mapStart: number; playBg: number; drillBg: number; progAt: number; certBg: number; doneAt: number; fadeOut: number; total: number };
+const toT = (t: QuestDemoProps["時間軸"]): Timing => ({
+  phoneIn: t.手機進場, listStart: t.任務清單開始, mapStart: t.地圖開始, playBg: t.遊玩場景,
+  drillBg: t.機台掃描開始, progAt: t.進度更新, certBg: t.證書場景, doneAt: t.完成頁, fadeOut: t.淡出開始, total: t.總長,
+});
 const A = (p: string) => `asembly/quest/${p}`;
 const SCENE_QR = { x: 605, y: 598, size: 52 };
 const SCAN_QR = { x: 217, y: 603, size: 124 };
@@ -143,7 +168,7 @@ const KioskBg: React.FC<{ src: string; inAt: number }> = ({ src, inAt }) => {
   );
 };
 
-const QuestBackground: React.FC = () => {
+const QuestBackground: React.FC<{ T: Timing }> = ({ T }) => {
   const frame = useCurrentFrame();
   const hallScale = interpolate(frame, [0, T.playBg], [1.04, 1.12]);
   const playIn = interpolate(frame, [T.playBg, T.playBg + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
@@ -160,17 +185,18 @@ const QuestBackground: React.FC = () => {
   </>;
 };
 
-export const QuestDemo: React.FC = () => {
+export const QuestDemo: React.FC<QuestDemoProps> = ({ 時間軸, 文案 }) => {
   const frame = useCurrentFrame();
+  const T = toT(時間軸);
   const fade = interpolate(frame, [T.fadeOut, T.total - 6], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
     <AbsoluteFill style={{ background: "#000", fontFamily: FONT }}>
-      <QuestBackground />
+      <QuestBackground T={T} />
 
       {/* 段1 標示卡 */}
       <Sequence from={0} durationInFrames={T.listStart}>
-        <TitleCard index={4} title="每日任務" subtitle="依地圖完成五項機具任務，掃描機台 QR 記錄進度" enterFrame={10} />
+        <TitleCard index={4} title={文案.標題} subtitle={文案.副標} enterFrame={10} />
       </Sequence>
       <Sequence from={T.drillBg} durationInFrames={T.progAt - T.drillBg}>
         <SceneQrCallout src={A("qr_quest_gold.png")} enterFrame={4} target={SCENE_QR}
@@ -185,7 +211,7 @@ export const QuestDemo: React.FC = () => {
             {frame < T.listStart && <TaskHome />}
             {frame >= T.listStart && frame < T.mapStart && <TaskList from={T.listStart + 4} />}
             {frame >= T.mapStart && frame < T.drillBg && <MapScreen />}
-            {frame >= T.drillBg && frame < T.progAt && <ScanView bg={A("scan_panel.png")} from={T.drillBg + 5} to={T.progAt} qr={SCAN_QR} scanLabel="相機・對準機台 QR" doneLabel="✓ 已辨識・任務進度已記錄" />}
+            {frame >= T.drillBg && frame < T.progAt && <ScanView bg={A("scan_panel.png")} from={T.drillBg + 5} to={T.progAt} qr={SCAN_QR} scanLabel={文案.掃描中標語} doneLabel={文案.掃描完成標語} />}
             {frame >= T.progAt && frame < T.doneAt && <ProgressScreen toast={frame < T.progAt + 70} />}
             {frame >= T.doneAt && <DoneScreen />}
           </PhoneAssetFrame>
@@ -193,15 +219,11 @@ export const QuestDemo: React.FC = () => {
       </PhoneBubble>
 
       {/* 字幕 */}
-      <Subtitle lines={[
-        { text: "系統以地圖列出五項機具任務與所在位置。", from: 60, to: 210 },
-        { text: "完成操作後掃描機台 QR，系統自動更新任務進度。", from: 210, to: 350 },
-        { text: "五項任務完成後，系統產生可下載的結業證書。", from: 350, to: 450 },
-      ]} />
+      <Subtitle lines={文案.字幕.map((l) => ({ text: l.文字, from: l.起, to: l.訖 }))} />
 
       {/* 結尾淡出＋落款 */}
       <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-      <EndCard feature="五項任務完成後產生結業證書" index={4} fade={fade} isFinal />
+      <EndCard feature={文案.落款} index={4} fade={fade} isFinal />
     </AbsoluteFill>
   );
 };
