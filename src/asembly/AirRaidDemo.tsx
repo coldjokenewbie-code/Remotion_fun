@@ -42,9 +42,9 @@ const SPOT2 = { x: "19.7%", y: "69.5%" }; // PO 2026-07-17 更新版 scene2（20
 const SPOT3 = { x: "12.5%", y: "56%" };
 // v7 實圖量測：scene1 cover 座標；scan_panel 為 480×1040 座標。
 const SCENE_QR = { x: 653, y: 810, size: 16 };
-// PO 設計稿 scan_screen_po.png（自帶相機 chip/取景框；真 QR 已原位合成 decode=0B-7?f=audio；
-// 全寬保留、上下石板紋理延伸補至 390:844）
-const SCAN_QR = { x: 125, y: 546, size: 133 };
+// PO 設計稿 scan_screen_po.png（彩色列車版；自帶相機 chip/取景框；真 QR 已原位合成 decode=0B-7?f=audio；
+// 全寬保留、上下石板紋理延伸補至 390:844。⚠️ 來源檔僅 319×568，待 PO 給原始解析度可直接重跑管線）
+const SCAN_QR = { x: 123, y: 544, size: 123 };
 // 段2 手機拉出示意：沿用 scene3 zoom transformOrigin（SPOT3，已量測之定點）換算絕對像素
 const PHONE_ANCHOR = { x: 240, y: 605 };
 
