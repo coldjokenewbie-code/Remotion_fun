@@ -20,7 +20,9 @@ export const questDemoSchema = z.object({
     證書場景: 幀(350, "背景切證書機台"),
     完成頁: 幀(360, "進度頁→完成領證頁 5/5"),
     淡出開始: 幀(456, "結尾黑幕淡出起點"),
-    總長: 幀(480, "影片總長（幀，30fps）"),
+    書擋開始: 幀(464, "黑幕上開頭標題卡同款書擋幀起點"),
+    落款開始: 幀(546, "書擋結束→落款起點"),
+    總長: 幀(600, "影片總長（幀，30fps）"),
   }),
   文案: z.object({
     標題: z.string().default("每日任務"),
@@ -38,11 +40,30 @@ export const questDemoSchema = z.object({
 export type QuestDemoProps = z.infer<typeof questDemoSchema>;
 export const questDemoDefaultProps: QuestDemoProps = questDemoSchema.parse({ 時間軸: {}, 文案: {} });
 
-type Timing = { phoneIn: number; listStart: number; mapStart: number; playBg: number; drillBg: number; progAt: number; certBg: number; doneAt: number; fadeOut: number; total: number };
+type Timing = { phoneIn: number; listStart: number; mapStart: number; playBg: number; drillBg: number; progAt: number; certBg: number; doneAt: number; fadeOut: number; bookendAt: number; endCardAt: number; total: number };
 const toT = (t: QuestDemoProps["時間軸"]): Timing => ({
   phoneIn: t.手機進場, listStart: t.任務清單開始, mapStart: t.地圖開始, playBg: t.遊玩場景,
-  drillBg: t.機台掃描開始, progAt: t.進度更新, certBg: t.證書場景, doneAt: t.完成頁, fadeOut: t.淡出開始, total: t.總長,
+  drillBg: t.機台掃描開始, progAt: t.進度更新, certBg: t.證書場景, doneAt: t.完成頁,
+  fadeOut: t.淡出開始, bookendAt: t.書擋開始, endCardAt: t.落款開始, total: t.總長,
 });
+
+// ── 書擋幀：開頭總覽片標題卡同款（黑幕上中央標題），與 OverviewIntro 開場呼應 ──
+const BookendTitle: React.FC<{ from: number; to: number }> = ({ from, to }) => {
+  const frame = useCurrentFrame();
+  if (frame < from || frame >= to) return null;
+  const opacity = Math.min(
+    interpolate(frame, [from, from + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+    interpolate(frame, [to - 12, to], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+  );
+  return (
+    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity, fontFamily: FONT }}>
+      <div style={{ textAlign: "center", color: "#fff" }}>
+        <div style={{ color: "#ffad73", fontSize: 26, fontWeight: 800, letterSpacing: 8 }}>國家鐵道博物館</div>
+        <div style={{ fontSize: 72, fontWeight: 700, lineHeight: 1.28, letterSpacing: 8, marginTop: 18, whiteSpace: "pre-line" }}>{"組立工場\n行動導覽系統"}</div>
+      </div>
+    </div>
+  );
+};
 const A = (p: string) => `asembly/quest/${p}`;
 const SCENE_QR = { x: 605, y: 598, size: 52 };
 const SCAN_QR = { x: 217, y: 603, size: 124 };
@@ -188,7 +209,8 @@ const QuestBackground: React.FC<{ T: Timing }> = ({ T }) => {
 export const QuestDemo: React.FC<QuestDemoProps> = ({ 時間軸, 文案 }) => {
   const frame = useCurrentFrame();
   const T = toT(時間軸);
-  const fade = interpolate(frame, [T.fadeOut, T.total - 6], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  // 黑幕須在書擋標題出現前收滿（書擋/落款皆在全黑上呈現）
+  const fade = interpolate(frame, [T.fadeOut, T.bookendAt + 4], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
     <AbsoluteFill style={{ background: "#000", fontFamily: FONT }}>
@@ -221,9 +243,14 @@ export const QuestDemo: React.FC<QuestDemoProps> = ({ 時間軸, 文案 }) => {
       {/* 字幕 */}
       <Subtitle lines={文案.字幕.map((l) => ({ text: l.文字, from: l.起, to: l.訖 }))} />
 
-      {/* 結尾淡出＋落款 */}
+      {/* 結尾淡出 → 書擋標題卡（同開場） → 落款 */}
       <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-      <EndCard feature={文案.落款} index={4} fade={fade} isFinal />
+      <BookendTitle from={T.bookendAt} to={T.endCardAt} />
+      {frame >= T.endCardAt && (
+        <div style={{ position: "absolute", inset: 0, opacity: interpolate(frame, [T.endCardAt, T.endCardAt + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) }}>
+          <EndCard feature={文案.落款} index={4} fade={1} isFinal />
+        </div>
+      )}
     </AbsoluteFill>
   );
 };
