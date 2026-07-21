@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { z } from "zod";
-import { EndCard, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
+import { EndCard, FingerTap, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
 
 // ═══ 每日任務示範（組立工場練習所）──CDIC_O4 式軌道制：Sequence 名＝props 欄名 ═══
 // 腳本：PO 每日任務_W0710 pptx 五拍——開場任務頁→五機具列表→地圖→遊玩+掃機台QR記進度→完玩領證書
@@ -15,33 +15,37 @@ const 字幕列 = z.object({ 文字: z.string(), 起: z.number().int().min(0).ma
 
 export const questDemoSchema = z.object({
   時間軸: z.object({
-    大廳場景: 軌(0, 180, "背景：練習所大廳渲染"),
-    遊玩場景: 軌(180, 230, "背景：遊玩實照"),
-    鑽削機台: 軌(230, 350, "背景：鑽削機台（掃 QR 段）"),
-    證書機台: 軌(350, 456, "背景：證書機台"),
+    大廳場景: 軌(0, 60, "背景：練習所大廳渲染"),
+    遊玩場景: 軌(60, 140, "背景：五座機具遊玩實照（先玩）"),
+    鑽削機台: 軌(140, 420, "背景：進入鑽床遊玩→掃 QR→任務說明→進度"),
+    證書機台: 軌(420, 500, "背景：證書機台（完成獎賞）"),
+    補充場景: 軌(500, 560, "背景：大廳（補充：直接開 App 參加）"),
     標題段: 軌(0, 60, "左上功能標示卡顯示窗"),
-    機台QR示意: 軌(230, 285, "左側金色 QR 示意卡＋拉線顯示窗"),
-    手機面板: 軌(20, 456, "拉出面板＋手持手機在場窗"),
-    任務頁: 軌(20, 60, "手機：今日任務首頁"),
-    清單頁: 軌(60, 150, "手機：五機具清單"),
-    地圖頁: 軌(150, 230, "手機：練習所地圖"),
-    掃描畫面: 軌(230, 285, "手機：相機掃機台 QR"),
-    進度頁: 軌(285, 360, "手機：進度 3/5＋已記錄提示"),
-    完成頁: 軌(360, 456, "手機：5/5 完成領證書"),
-    黑幕收尾: 軌(456, 600, "黑幕淡入後持續至片尾"),
-    書擋標題: 軌(464, 546, "開頭標題卡同款書擋幀"),
-    落款: 軌(546, 600, "結尾落款；結束幀＝影片總長"),
+    機台QR示意: 軌(220, 280, "左側金色 QR 示意卡＋拉線顯示窗（玩完提示掃碼）"),
+    手機面板: 軌(232, 560, "拉出面板＋手持手機在場窗（掃碼起）"),
+    掃描畫面: 軌(240, 280, "手機：相機掃機台 QR"),
+    任務說明頁: 軌(280, 370, "手機：本日任務說明＋完成獎勵＋選擇參加"),
+    參加點按: 軌(330, 368, "手指點「參加任務」（點按於開始+20 幀）"),
+    進度頁: 軌(370, 420, "手機：參加後進度記錄更新"),
+    完成頁: 軌(420, 500, "手機：5/5 完成領證書"),
+    清單頁: 軌(500, 560, "手機：任務清單（補充：直接開 App 接任務）"),
+    黑幕收尾: 軌(560, 690, "黑幕淡入後持續至片尾"),
+    書擋標題: 軌(568, 640, "開頭標題卡同款書擋幀"),
+    落款: 軌(640, 690, "結尾落款；結束幀＝影片總長"),
   }),
   文案: z.object({
     標題: z.string().default("每日任務"),
-    副標: z.string().default("依地圖完成五項機具任務，掃描機台 QR 記錄進度"),
+    副標: z.string().default("現場遊玩或開啟 App 皆可參加"),
     掃描中標語: z.string().default("相機・對準機台 QR"),
-    掃描完成標語: z.string().default("✓ 已辨識・任務進度已記錄"),
+    掃描完成標語: z.string().default("✓ 已辨識・顯示本日任務"),
+    參加按鈕: z.string().default("參加任務・記錄進度"),
     落款: z.string().default("五項任務完成後產生結業證書"),
     字幕: z.array(字幕列).default([
-      { 文字: "系統以地圖列出五項機具任務與所在位置。", 起: 60, 訖: 210 },
-      { 文字: "完成操作後掃描機台 QR，系統自動更新任務進度。", 起: 210, 訖: 350 },
-      { 文字: "五項任務完成後，系統產生可下載的結業證書。", 起: 350, 訖: 450 },
+      { 文字: "組立工場練習所開放五座互動機具，可直接操作體驗。", 起: 60, 訖: 220 },
+      { 文字: "完成操作後，機台提示掃描 QR code。", 起: 220, 訖: 300 },
+      { 文字: "掃描後顯示本日任務與完成獎勵，可選擇參加並記錄進度。", 起: 300, 訖: 370 },
+      { 文字: "完成各機台後進度自動更新，五項完成產生結業證書。", 起: 370, 訖: 500 },
+      { 文字: "也可直接開啟 App 每日任務，接下本日任務。", 起: 500, 訖: 560 },
     ]),
   }),
 });
@@ -102,7 +106,7 @@ const MACHINES = [
   ["車削", "車出圓滑弧面"], ["銑削", "銑出平整表面"], ["鑽削", "鑽出精準孔位"], ["搪削", "搪大孔徑內壁"], ["鉋削", "鉋平長條工面"],
 ] as const;
 
-const TaskHome: React.FC = () => (
+const TaskHome: React.FC<{ joinLabel?: string }> = ({ joinLabel }) => (
   <div style={{ position: "absolute", inset: 0, background: CREAM, fontFamily: FONT }}>
     <Header />
     <div style={{ background: "#fff", borderRadius: 12, margin: "12px 14px", padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -112,8 +116,16 @@ const TaskHome: React.FC = () => (
       <div style={{ color: "#666", fontSize: 13, lineHeight: 1.6, marginTop: 8 }}>
         學習車削、銑削、鑽削、搪削、鉋削五種工具，完成所有體驗就可領取結業證書！
       </div>
+      <div style={{ background: "#fdf6ec", border: "1px solid #f0dcbe", borderRadius: 8, marginTop: 10, padding: "8px 12px", color: "#7a4a12", fontSize: 12.5, lineHeight: 1.6 }}>
+        完成獎勵：專屬「技工結業證書」（可下載保存）
+      </div>
     </div>
     <Prog pct={0} n={0} />
+    {joinLabel && (
+      <div style={{ margin: "16px 14px 0", background: ORANGE, color: "#fff", fontSize: 16, fontWeight: 800, borderRadius: 24, padding: "13px 0", textAlign: "center", letterSpacing: 2, boxShadow: "0 4px 14px rgba(232,134,45,0.4)" }}>
+        {joinLabel}
+      </div>
+    )}
   </div>
 );
 
@@ -222,6 +234,10 @@ export const QuestDemo: React.FC<QuestDemoProps> = ({ 時間軸: T, 文案 }) =>
         <KioskBg src={A("kiosk_cert.png")} inAt={0} />
         <div style={{ position: "absolute", inset: 0, background: "rgba(5,8,14,0.25)" }} />
       </Sequence>
+      <Sequence name="補充場景" from={T.補充場景.開始} durationInFrames={durT(T.補充場景)}>
+        <Img src={staticFile(A("scene_hall.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.08)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "rgba(5,8,14,0.25)" }} />
+      </Sequence>
 
       <Sequence name="標題段" from={T.標題段.開始} durationInFrames={durT(T.標題段)}>
         <TitleCard index={4} title={文案.標題} subtitle={文案.副標} enterFrame={10} />
@@ -235,15 +251,18 @@ export const QuestDemo: React.FC<QuestDemoProps> = ({ 時間軸: T, 文案 }) =>
       <Sequence name="手機面板" from={T.手機面板.開始} durationInFrames={durT(T.手機面板)}>
         <PhoneBubble anchor={SCENE_QR} visibleFrom={0} visibleTo={durT(T.手機面板)}
           leaderWindow={{ from: T.機台QR示意.開始 - 手機起, to: T.機台QR示意.結束 + 10 - 手機起 }}>
-          <PhoneAssetFrame src={A("hand_po.png")} enterFrame={0} left={-76} top={10}>
-            <Sequence name="任務頁" from={T.任務頁.開始 - 手機起} durationInFrames={durT(T.任務頁)}><TaskHome /></Sequence>
-            <Sequence name="清單頁" from={T.清單頁.開始 - 手機起} durationInFrames={durT(T.清單頁)}><TaskList from={4} /></Sequence>
-            <Sequence name="地圖頁" from={T.地圖頁.開始 - 手機起} durationInFrames={durT(T.地圖頁)}><MapScreen /></Sequence>
+          <PhoneAssetFrame src={A("hand_po.png")} enterFrame={0} left={-76} top={10}
+            overlay={<FingerTap src="asembly/airraid/finger_tap_po.png" tip={[881, 161]} imgSize={1024} scale={0.87}
+              target={[376, 442]} start={T.參加點按.開始 - 手機起} tapAt={T.參加點按.開始 + 20 - 手機起} end={T.參加點按.結束 - 手機起} from={[-560, 500]} />}>
             <Sequence name="掃描畫面" from={T.掃描畫面.開始 - 手機起} durationInFrames={durT(T.掃描畫面)}>
               <ScanView bg={A("scan_panel.png")} from={5} to={durT(T.掃描畫面)} qr={SCAN_QR} scanLabel={文案.掃描中標語} doneLabel={文案.掃描完成標語} />
             </Sequence>
+            <Sequence name="任務說明頁" from={T.任務說明頁.開始 - 手機起} durationInFrames={durT(T.任務說明頁)}>
+              <TaskHome joinLabel={文案.參加按鈕} />
+            </Sequence>
             <Sequence name="進度頁" from={T.進度頁.開始 - 手機起} durationInFrames={durT(T.進度頁)}><ProgToast /></Sequence>
             <Sequence name="完成頁" from={T.完成頁.開始 - 手機起} durationInFrames={durT(T.完成頁)}><DoneScreen /></Sequence>
+            <Sequence name="清單頁" from={T.清單頁.開始 - 手機起} durationInFrames={durT(T.清單頁)}><TaskList from={4} /></Sequence>
           </PhoneAssetFrame>
         </PhoneBubble>
       </Sequence>
