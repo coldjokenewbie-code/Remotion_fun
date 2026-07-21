@@ -44,7 +44,9 @@ const SPOT2 = { x: "19.7%", y: "69.5%" }; // PO 2026-07-17 更新版 scene2（20
 const SPOT3 = { x: "12.5%", y: "56%" };
 // v7 實圖量測：scene1 cover 座標；scan_panel 為 480×1040 座標。
 const SCENE_QR = { x: 653, y: 810, size: 16 };
-const SCAN_QR = { x: 197, y: 560, size: 115 };
+// PO 設計稿 scan_screen_po.png（自帶相機 chip/取景框；真 QR 已原位合成 decode=0B-7?f=audio；
+// 全寬保留、上下石板紋理延伸補至 390:844）
+const SCAN_QR = { x: 125, y: 546, size: 133 };
 // 段2 手機拉出示意：沿用 scene3 zoom transformOrigin（SPOT3，已量測之定點）換算絕對像素
 const PHONE_ANCHOR = { x: 240, y: 605 };
 
@@ -110,7 +112,7 @@ export const AirRaidDemo: React.FC<AirRaidProps> = ({ 時間軸, 文案 }) => {
         {frame >= T.phoneIn - 5 && (
           <PhoneAssetFrame src={A("hand_po.png")} enterFrame={T.phoneIn} left={-76} top={10}>
             {/* 掃描相機畫面（對準展台說明牌上的 QR） */}
-            {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} qr={SCAN_QR} />}
+            {frame < T.scanEnd && <ScanView bg={A("scan_screen_po.png")} from={T.phoneIn + 10} to={T.scanEnd} qr={SCAN_QR} chrome={false} />}
             {/* App 語音導覽分頁（原型實截：中文播放中） */}
             {frame >= T.scanEnd && (
               <Img src={staticFile(A(frame < T.japaneseStart ? "app_tw_play.png" : "app_jp_play.png"))} style={{ position: "absolute", width: "100%" }} />

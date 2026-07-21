@@ -301,10 +301,11 @@ const QrFrame: React.FC<{ qr: QrGeometry; frameSize: number }> = ({ qr, frameSiz
 );
 
 // ── 掃描視圖（相機畫面：背景＋QR＋掃描線）───────────────────────
+// chrome=false：素材已自帶相機 chip／取景框（如 PO 設計稿）→ 只疊掃描線與完成標語
 export const ScanView: React.FC<{
   bg: string; from: number; to: number; qr: QrGeometry;
-  scanLabel?: string; doneLabel?: string;
-}> = ({ bg, from, to, qr, scanLabel = "相機・對準展板 QR", doneLabel = "✓ 已辨識・開啟導覽功能" }) => {
+  scanLabel?: string; doneLabel?: string; chrome?: boolean;
+}> = ({ bg, from, to, qr, scanLabel = "相機・對準展板 QR", doneLabel = "✓ 已辨識・開啟導覽功能", chrome = true }) => {
   const frame = useCurrentFrame();
   const t = interpolate(frame, [from, to], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const frameSize = qr.size * 1.3;
@@ -314,17 +315,19 @@ export const ScanView: React.FC<{
     <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
       <Img src={staticFile(bg)} style={{
         position: "absolute", width: "100%", height: "100%", objectFit: "cover",
-        filter: "brightness(0.9)",
+        filter: chrome ? "brightness(0.9)" : undefined,
       }} />
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.28)" }} />
-      <div style={{ position: "absolute", top: 28, left: 0, width: "100%", color: "#fff", textAlign: "center", fontFamily: FONT, fontSize: 17, fontWeight: 700, letterSpacing: 2 }}>
-        <span style={{ background: "rgba(0,0,0,0.62)", padding: "7px 12px", borderRadius: 16 }}>{scanLabel}</span>
-      </div>
-      <QrFrame qr={qr} frameSize={frameSize} />
+      {chrome && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.28)" }} />}
+      {chrome && (
+        <div style={{ position: "absolute", top: 28, left: 0, width: "100%", color: "#fff", textAlign: "center", fontFamily: FONT, fontSize: 17, fontWeight: 700, letterSpacing: 2 }}>
+          <span style={{ background: "rgba(0,0,0,0.62)", padding: "7px 12px", borderRadius: 16 }}>{scanLabel}</span>
+        </div>
+      )}
+      {chrome && <QrFrame qr={qr} frameSize={frameSize} />}
       {/* 掃描線 */}
       {!locked && <div style={{ position: "absolute", left: `${(qr.x - frameSize / 2) / 4.8}%`, top: `${scanY / 10.4}%`, width: `${frameSize / 4.8}%`, height: 3, background: "linear-gradient(90deg, transparent, #35d07f, transparent)" }} />}
       {locked && (
-        <div style={{ position: "absolute", left: "50%", top: "62%", transform: "translateX(-50%)", color: "#35d07f", fontFamily: FONT, fontSize: 20, fontWeight: 700, background: "rgba(0,0,0,0.55)", padding: "6px 16px", borderRadius: 20 }}>
+        <div style={{ position: "absolute", left: "50%", top: "62%", transform: "translateX(-50%)", whiteSpace: "nowrap", color: "#35d07f", fontFamily: FONT, fontSize: 20, fontWeight: 700, background: "rgba(0,0,0,0.55)", padding: "6px 16px", borderRadius: 20 }}>
           {doneLabel}
         </div>
       )}
