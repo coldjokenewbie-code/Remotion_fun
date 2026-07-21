@@ -5,10 +5,19 @@ import { AirRaidDemo } from "./asembly/AirRaidDemo";
 import { ARDemo } from "./asembly/ARDemo";
 import { MemoryVoiceDemo } from "./asembly/MemoryVoiceDemo";
 import { QuestDemo } from "./asembly/QuestDemo";
+import { OverviewIntro } from "./asembly/OverviewIntro";
 
 const RemotionRoot: React.FC = () => {
   return (
     <>
+      <Composition
+        id="OverviewIntro"
+        component={OverviewIntro}
+        durationInFrames={480}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
       <Composition
         id="AirRaidDemo"
         component={AirRaidDemo}
