@@ -21,7 +21,17 @@ export const RemotionRoot: React.FC = () => {
         height={1080}
         schema={overviewIntroSchema}
         defaultProps={{
-          時間軸: { 段2a掃展牌: 120, 段2b服務台: 200, 段3休息: 270, 段3下一站: 315, 段3提醒: 360, 段3搜尋: 405, 淡出開始: 450, 總長: 480 },
+          時間軸: {
+            標題段: { 開始: 0, 結束: 120 },
+            掃展牌段: { 開始: 120, 結束: 200 },
+            服務台段: { 開始: 200, 結束: 270 },
+            情境手機: { 開始: 270, 結束: 450 },
+            情境一找休息: { 開始: 270, 結束: 315 },
+            情境二下一站: { 開始: 315, 結束: 360 },
+            情境三展演提醒: { 開始: 360, 結束: 405 },
+            情境四搜尋: { 開始: 405, 結束: 450 },
+            黑幕淡出: { 開始: 450, 結束: 480 },
+          },
           文案: {
             館名: "國家鐵道博物館",
             主標: "組立工場\n行動導覽系統",
@@ -37,7 +47,7 @@ export const RemotionRoot: React.FC = () => {
             ],
           },
         }}
-        calculateMetadata={({ props }) => ({ durationInFrames: props.時間軸.總長 })}
+        calculateMetadata={({ props }) => ({ durationInFrames: props.時間軸.黑幕淡出.結束 })}
       />
       <Composition
         id="AirRaidDemo"
