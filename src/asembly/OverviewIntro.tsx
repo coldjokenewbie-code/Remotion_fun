@@ -62,8 +62,8 @@ const SceneLayer: React.FC<{ T: OverviewIntroProps["時間軸"] }> = ({ T }) => 
     { src: OVERVIEW("p2_scene.png"), from: T.標題段.開始, to: T.掃展牌段.開始 + H, dim: 0.24, scale: undefined as number | undefined, origin: undefined as string | undefined },
     { src: AIR("scene3_0B7_close.png"), from: T.掃展牌段.開始 - H, to: T.服務台段.開始 + H, dim: 0.3, scale: 1.19, origin: "12.5% 56%" },
     { src: OVERVIEW("counter_scan.png"), from: T.服務台段.開始 - H, to: T.情境一找休息.開始 + H, dim: 0.24, scale: undefined, origin: undefined },
-    { src: OVERVIEW("hall_rest.jpg"), from: T.情境一找休息.開始 - H, to: T.情境二下一站.開始 + H, dim: 0.24, scale: undefined, origin: undefined },
-    { src: OVERVIEW("hall_next.jpg"), from: T.情境二下一站.開始 - H, to: T.黑幕淡出.結束, dim: 0.24, scale: undefined, origin: undefined },
+    // PO 2026-07-21：情境一背景改與後三段相同（hall_next），hall_rest（LINE_10 含烘焙標註字）停用
+    { src: OVERVIEW("hall_next.jpg"), from: T.情境一找休息.開始 - H, to: T.黑幕淡出.結束, dim: 0.24, scale: undefined, origin: undefined },
   ];
   return <>
     {scenes.map((s) => {
