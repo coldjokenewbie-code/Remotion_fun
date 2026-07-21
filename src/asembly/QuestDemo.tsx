@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { EndCard, FONT, PhoneFrame, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
+import { EndCard, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
 
 // ═══ 每日任務示範（組立工場練習所）──30fps，總長 16s＝480f ═══
 // 腳本：PO 每日任務_W0710 pptx 五拍——開場任務頁→五機具列表→地圖→遊玩+掃機台QR記進度→完玩領證書
@@ -135,7 +135,7 @@ const DoneScreen: React.FC = () => (
 // ── 直式機台背景（contain 置左，避免 cover 裁掉機台）──
 const KioskBg: React.FC<{ src: string; inAt: number }> = ({ src, inAt }) => {
   const frame = useCurrentFrame();
-  const p = interpolate(frame, [inAt, inAt + 14], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const p = interpolate(frame, [inAt, inAt + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
     <div style={{ position: "absolute", inset: 0, background: "#0d0f12", opacity: p }}>
       <Img src={staticFile(src)} style={{ position: "absolute", left: "6%", top: 0, height: "100%", objectFit: "contain" }} />
@@ -146,9 +146,9 @@ const KioskBg: React.FC<{ src: string; inAt: number }> = ({ src, inAt }) => {
 const QuestBackground: React.FC = () => {
   const frame = useCurrentFrame();
   const hallScale = interpolate(frame, [0, T.playBg], [1.04, 1.12]);
-  const playIn = interpolate(frame, [T.playBg, T.playBg + 14], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const playIn = interpolate(frame, [T.playBg, T.playBg + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return <>
-    {frame < T.playBg + 14 && <Img src={staticFile(A("scene_hall.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${hallScale})` }} />}
+    {frame < T.playBg + 8 && <Img src={staticFile(A("scene_hall.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${hallScale})` }} />}
     {frame >= T.playBg && frame < T.drillBg && (
       <div style={{ position: "absolute", inset: 0, opacity: playIn }}>
         <Img src={staticFile(A("scene_play.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
@@ -177,17 +177,20 @@ export const QuestDemo: React.FC = () => {
           card={{ x: 70, y: 300, width: 240 }} />
       </Sequence>
 
-      {/* 手機（全程手持；本片開場即開手機，不掃碼進入） */}
-      {frame >= T.phoneIn - 5 && (
-        <PhoneFrame enterFrame={T.phoneIn} x={380} hand={A("hand_hold.png")}>
-          {frame < T.listStart && <TaskHome />}
-          {frame >= T.listStart && frame < T.mapStart && <TaskList from={T.listStart + 4} />}
-          {frame >= T.mapStart && frame < T.drillBg && <MapScreen />}
-          {frame >= T.drillBg && frame < T.progAt && <ScanView bg={A("scan_panel.png")} from={T.drillBg + 5} to={T.progAt} qr={SCAN_QR} scanLabel="相機・對準機台 QR" doneLabel="✓ 已辨識・任務進度已記錄" />}
-          {frame >= T.progAt && frame < T.doneAt && <ProgressScreen toast={frame < T.progAt + 70} />}
-          {frame >= T.doneAt && <DoneScreen />}
-        </PhoneFrame>
-      )}
+      {/* 手機全程在面板內；拉線僅於機台掃描段顯示 */}
+      <PhoneBubble anchor={SCENE_QR} visibleFrom={T.phoneIn} visibleTo={T.fadeOut}
+        leaderWindow={{ from: T.drillBg, to: T.progAt + 10 }}>
+        {frame >= T.phoneIn - 5 && (
+          <PhoneAssetFrame src={A("hand_po.png")} enterFrame={T.phoneIn} left={-76} top={10}>
+            {frame < T.listStart && <TaskHome />}
+            {frame >= T.listStart && frame < T.mapStart && <TaskList from={T.listStart + 4} />}
+            {frame >= T.mapStart && frame < T.drillBg && <MapScreen />}
+            {frame >= T.drillBg && frame < T.progAt && <ScanView bg={A("scan_panel.png")} from={T.drillBg + 5} to={T.progAt} qr={SCAN_QR} scanLabel="相機・對準機台 QR" doneLabel="✓ 已辨識・任務進度已記錄" />}
+            {frame >= T.progAt && frame < T.doneAt && <ProgressScreen toast={frame < T.progAt + 70} />}
+            {frame >= T.doneAt && <DoneScreen />}
+          </PhoneAssetFrame>
+        )}
+      </PhoneBubble>
 
       {/* 字幕 */}
       <Subtitle lines={[

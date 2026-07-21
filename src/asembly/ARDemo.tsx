@@ -1,16 +1,16 @@
 import React from "react";
 import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { EndCard, FingerTap, FONT, PhoneFrame, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
+import { EndCard, FingerTap, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
 
 // ═══ AR 導覽功能示範（G-1-3 機坑×台工1677）──時間軸常數（30fps，總長 15s＝450f）════
 // 空間圖：PO 提供 G-3-機坑三連（scene1 亮景全景→scene2 訪客舉手機→scene3 調暗＋說明牌 QR 聚光）
 // 本片無旁白；以字幕串接功能敘事
 const T = {
   s2aStart: 30,
-  s2bStart: 48,
-  phoneIn: 38,
+  s2bStart: 44,
+  phoneIn: 58,
   functionStart: 72,
-  scanEnd: 72,
+  scanEnd: 120,
   arTap: 260,
   arReveal: 267,
   fadeOut: 426,
@@ -21,18 +21,19 @@ const A = (p: string) => `asembly/ardemo/${p}`;
 const SCENE_QR = { x: 608, y: 532, size: 14 };
 const SCAN_QR = { x: 176, y: 529, size: 107 };
 const SPOT3 = { x: "12.3%", y: "50.9%" };
+const PHONE_ANCHOR = { x: 236, y: 550 };
 
 const ARBackground: React.FC = () => {
   const frame = useCurrentFrame();
-  const s1Scale = interpolate(frame, [0, T.s2aStart + 18], [1.05, 1.12]);
-  const in2 = interpolate(frame, [T.s2aStart, T.s2aStart + 16], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const s2Scale = interpolate(frame, [T.s2aStart, T.s2bStart + 10], [1, 1.08], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const in3 = interpolate(frame, [T.s2bStart, T.s2bStart + 14], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const s1Scale = interpolate(frame, [0, T.s2aStart + 8], [1.05, 1.12]);
+  const in2 = interpolate(frame, [T.s2aStart, T.s2aStart + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const s2Scale = interpolate(frame, [T.s2aStart, T.s2bStart + 8], [1, 1.08], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const in3 = interpolate(frame, [T.s2bStart, T.s2bStart + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const push3 = interpolate(frame, [T.s2bStart, T.scanEnd + 20], [1.02, 1.3], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const bgDim = interpolate(frame, [T.scanEnd - 10, T.scanEnd + 20], [0, 0.25], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return <>
-    {frame < T.s2aStart + 16 && <Img src={staticFile(A("scene1_G13.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${s1Scale})` }} />}
-    {frame >= T.s2aStart && frame < T.s2bStart + 14 && (
+    {frame < T.s2aStart + 8 && <Img src={staticFile(A("scene1_G13.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${s1Scale})` }} />}
+    {frame >= T.s2aStart && frame < T.s2bStart + 8 && (
       <div style={{ position: "absolute", inset: 0, opacity: in2, transform: `scale(${s2Scale})` }}>
         <Img src={staticFile(A("scene2_G13.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
       </div>
@@ -64,20 +65,23 @@ export const ARDemo: React.FC = () => {
           backgroundScale={interpolate(frame, [0, T.s2aStart + 18], [1.05, 1.12])} />
       </Sequence>
 
-      {/* 手機（不能包 Sequence，否則子元件幀號變相對值）：掃描→AR 分頁→點按→台工1677 重現 */}
-      {frame >= T.phoneIn - 5 && (
-        <PhoneFrame enterFrame={T.phoneIn} x={380} hand={A("hand_hold.png")}
-          overlay={<FingerTap src={A("finger_tap_po.png")} tip={[881, 161]} imgSize={1024} scale={1.0}
-            target={[200, 713]} start={T.arTap - 30} tapAt={T.arTap} end={T.arTap + 44} from={[-560, 500]} />}>
-          {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} qr={SCAN_QR} doneLabel="✓ 已辨識・開啟 AR 探索" />}
-          {frame >= T.scanEnd && (
-            <>
-              <Img src={staticFile(A("app_ar_before.png"))} style={{ position: "absolute", width: "100%", opacity: 1 - revealP }} />
-              <Img src={staticFile(A("app_ar_after.png"))} style={{ position: "absolute", width: "100%", opacity: revealP }} />
-            </>
-          )}
-        </PhoneFrame>
-      )}
+      {/* 拉出面板（不能包 Sequence，否則子元件幀號變相對值）：掃描→AR 分頁→點按→台工1677 重現 */}
+      <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={T.phoneIn} visibleTo={T.fadeOut}>
+        {/* PO 手部素材（hand_po 挖空版）：slab 置中面板、手腕自面板底右裁出；素材位置＝面板相對座標 */}
+        {frame >= T.phoneIn - 5 && (
+          <PhoneAssetFrame src={A("hand_po.png")} enterFrame={T.phoneIn} left={-76} top={10}
+            overlay={<FingerTap src={A("finger_tap_po.png")} tip={[881, 161]} imgSize={1024} scale={0.87}
+              target={[381, 712]} start={T.arTap - 30} tapAt={T.arTap} end={T.arTap + 44} from={[-560, 500]} />}>
+            {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} qr={SCAN_QR} doneLabel="✓ 已辨識・開啟 AR 探索" />}
+            {frame >= T.scanEnd && (
+              <>
+                <Img src={staticFile(A("app_ar_before.png"))} style={{ position: "absolute", width: "100%", opacity: 1 - revealP }} />
+                <Img src={staticFile(A("app_ar_after.png"))} style={{ position: "absolute", width: "100%", opacity: revealP }} />
+              </>
+            )}
+          </PhoneAssetFrame>
+        )}
+      </PhoneBubble>
 
       {/* 字幕 */}
       <Subtitle lines={[

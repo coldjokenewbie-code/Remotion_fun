@@ -1,14 +1,14 @@
 import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { EndCard, FONT, PhoneFrame, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
+import { EndCard, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
 
 // ═══ 時間軸常數（30fps；開場依序呈現標示卡、QR 示意、掃描）════════════════
 // 空間圖 v3（PO 提供 0B-7 展台渲染三連）：scene1 亮景全景 → scene2 暗景中景（QR 聚光）→ scene3 近景正視
 // 開場靜音；PO 20260720 指定中文 10–12s＋日文 5–7s
 const T = {
   s2aStart: 36,
-  s2bStart: 58,
-  phoneIn: 64,
+  s2bStart: 50,
+  phoneIn: 62,
   functionStart: 160,
   scanEnd: 160,
   japaneseStart: 510,
@@ -24,6 +24,8 @@ const SPOT3 = { x: "12.5%", y: "56%" };
 // v7 實圖量測：scene1 cover 座標；scan_panel 為 480×1040 座標。
 const SCENE_QR = { x: 653, y: 810, size: 16 };
 const SCAN_QR = { x: 197, y: 560, size: 115 };
+// 段2 手機拉出示意：沿用 scene3 zoom transformOrigin（SPOT3，已量測之定點）換算絕對像素
+const PHONE_ANCHOR = { x: 240, y: 605 };
 
 const MultiLanguageCard: React.FC = () => {
   const frame = useCurrentFrame();
@@ -44,15 +46,15 @@ const MultiLanguageCard: React.FC = () => {
 
 const AirRaidBackground: React.FC = () => {
   const frame = useCurrentFrame();
-  const s1Scale = interpolate(frame, [0, T.s2aStart + 18], [1.05, 1.12]);
-  const in2 = interpolate(frame, [T.s2aStart, T.s2aStart + 16], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const push2 = interpolate(frame, [T.s2aStart, T.s2bStart + 10], [1, 1.18], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const in3 = interpolate(frame, [T.s2bStart, T.s2bStart + 14], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const s1Scale = interpolate(frame, [0, T.s2aStart + 8], [1.05, 1.12]);
+  const in2 = interpolate(frame, [T.s2aStart, T.s2aStart + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const push2 = interpolate(frame, [T.s2aStart, T.s2bStart + 8], [1, 1.18], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const in3 = interpolate(frame, [T.s2bStart, T.s2bStart + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const push3 = interpolate(frame, [T.s2bStart, T.scanEnd + 20], [1.05, 1.32], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const bgDim = interpolate(frame, [T.scanEnd - 10, T.scanEnd + 20], [0, 0.3], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return <>
-    {frame < T.s2aStart + 16 && <Img src={staticFile(A("scene1_0B7.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${s1Scale})` }} />}
-    {frame >= T.s2aStart && frame < T.s2bStart + 14 && (
+    {frame < T.s2aStart + 8 && <Img src={staticFile(A("scene1_0B7.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${s1Scale})` }} />}
+    {frame >= T.s2aStart && frame < T.s2bStart + 8 && (
       <div style={{ position: "absolute", inset: 0, opacity: in2, transform: `scale(${push2})`, transformOrigin: `${SPOT2.x} ${SPOT2.y}` }}>
         <Img src={staticFile(A("scene2_0B7_dim.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
       </div>
@@ -83,19 +85,19 @@ export const AirRaidDemo: React.FC = () => {
           backgroundScale={interpolate(frame, [0, T.s2aStart + 18], [1.05, 1.12])} />
       </Sequence>
 
-      {/* 段2 掃碼＋段3 功能：手機（不能包 Sequence，否則子元件幀號變相對值） */}
-      {frame >= T.phoneIn - 5 && (
-        <PhoneFrame enterFrame={T.phoneIn} x={380} hand={A("hand_hold.png")}>
-          {/* 掃描相機畫面（對準展台說明牌上的 QR） */}
-          {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} qr={SCAN_QR} />}
-          {/* App 語音導覽分頁（原型實截：中文播放中） */}
-          {frame >= T.scanEnd && (
-            <>
+      {/* 拉出面板：掃碼＋語音導覽分頁（不能包 Sequence，否則子元件幀號變相對值） */}
+      <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={T.phoneIn} visibleTo={T.fadeOut}>
+        {frame >= T.phoneIn - 5 && (
+          <PhoneAssetFrame src={A("hand_po.png")} enterFrame={T.phoneIn} left={-76} top={10}>
+            {/* 掃描相機畫面（對準展台說明牌上的 QR） */}
+            {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} qr={SCAN_QR} />}
+            {/* App 語音導覽分頁（原型實截：中文播放中） */}
+            {frame >= T.scanEnd && (
               <Img src={staticFile(A(frame < T.japaneseStart ? "app_tw_play.png" : "app_jp_play.png"))} style={{ position: "absolute", width: "100%" }} />
-            </>
-          )}
-        </PhoneFrame>
-      )}
+            )}
+          </PhoneAssetFrame>
+        )}
+      </PhoneBubble>
 
       {/* 功能旁白（開場段無音軌） */}
       <Sequence from={VO.guide}><Audio src={staticFile(A("vo_airraid_guide_tw.mp3"))} /></Sequence>

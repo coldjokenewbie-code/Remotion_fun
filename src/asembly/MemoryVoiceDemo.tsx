@@ -1,14 +1,14 @@
 import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { EndCard, FONT, PhoneFrame, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
+import { EndCard, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
 
 // ═══ 記憶中的聲音示範 v2（0B-3 職工的回憶）──30fps，總長 20s＝600f ═══
 // 場景：PO 提供 OB-3 三連（scene1 亮景→scene2 訪客舉手機→scene3 暗景聚光）
 // 開場靜音；v7 台灣年長男聲 8.36s，再播前輩口述節錄 5.2s。
 const T = {
   s2aStart: 36,
-  s2bStart: 58,
-  phoneIn: 60,
+  s2bStart: 50,
+  phoneIn: 62,
   functionStart: 150,
   scanEnd: 150,
   progSwap: 470,
@@ -22,18 +22,19 @@ const A = (p: string) => `asembly/memory/${p}`;
 const SCENE_QR = { x: 118, y: 376, size: 26 };
 const SCAN_QR = { x: 241, y: 500, size: 131 };
 const SPOT3 = { x: "6.4%", y: "42.8%" };
+const PHONE_ANCHOR = { x: 123, y: 462 };
 
 const MemoryBackground: React.FC = () => {
   const frame = useCurrentFrame();
-  const s1Scale = interpolate(frame, [0, T.s2aStart + 18], [1.05, 1.12]);
-  const in2 = interpolate(frame, [T.s2aStart, T.s2aStart + 16], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const s2Scale = interpolate(frame, [T.s2aStart, T.s2bStart + 10], [1, 1.08], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const in3 = interpolate(frame, [T.s2bStart, T.s2bStart + 14], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const s1Scale = interpolate(frame, [0, T.s2aStart + 8], [1.05, 1.12]);
+  const in2 = interpolate(frame, [T.s2aStart, T.s2aStart + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const s2Scale = interpolate(frame, [T.s2aStart, T.s2bStart + 8], [1, 1.08], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const in3 = interpolate(frame, [T.s2bStart, T.s2bStart + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const push3 = interpolate(frame, [T.s2bStart, T.scanEnd + 20], [1.02, 1.3], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const bgDim = interpolate(frame, [T.scanEnd - 10, T.scanEnd + 20], [0, 0.25], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return <>
-    {frame < T.s2aStart + 16 && <Img src={staticFile(A("scene1_0B3.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${s1Scale})` }} />}
-    {frame >= T.s2aStart && frame < T.s2bStart + 14 && (
+    {frame < T.s2aStart + 8 && <Img src={staticFile(A("scene1_0B3.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${s1Scale})` }} />}
+    {frame >= T.s2aStart && frame < T.s2bStart + 8 && (
       <div style={{ position: "absolute", inset: 0, opacity: in2, transform: `scale(${s2Scale})` }}>
         <Img src={staticFile(A("scene2_0B3.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
       </div>
@@ -65,18 +66,20 @@ export const MemoryVoiceDemo: React.FC = () => {
           card={{ x: 200, y: 400, width: 320 }} />
       </Sequence>
 
-      {/* 手機：掃描→記憶分頁（真實進度條 0:01→0:04）；不能包 Sequence */}
-      {frame >= T.phoneIn - 5 && (
-        <PhoneFrame enterFrame={T.phoneIn} x={380} hand={A("hand_hold.png")}>
-          {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} qr={SCAN_QR} doneLabel="✓ 已辨識・開啟記憶中的聲音" />}
-          {frame >= T.scanEnd && (
-            <>
-              <Img src={staticFile(A("app_memory_play1.png"))} style={{ position: "absolute", width: "100%", opacity: frame >= T.progSwap ? 0 : 1 }} />
-              <Img src={staticFile(A("app_memory_play2.png"))} style={{ position: "absolute", width: "100%", opacity: interpolate(frame, [T.progSwap - 6, T.progSwap + 6], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) }} />
-            </>
-          )}
-        </PhoneFrame>
-      )}
+      {/* 拉出面板：掃描→記憶分頁（真實進度條 0:01→0:04）；不能包 Sequence */}
+      <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={T.phoneIn} visibleTo={T.fadeOut}>
+        {frame >= T.phoneIn - 5 && (
+          <PhoneAssetFrame src={A("hand_po.png")} enterFrame={T.phoneIn} left={-76} top={10}>
+            {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} qr={SCAN_QR} doneLabel="✓ 已辨識・開啟記憶中的聲音" />}
+            {frame >= T.scanEnd && (
+              <>
+                <Img src={staticFile(A("app_memory_play1.png"))} style={{ position: "absolute", width: "100%", opacity: frame >= T.progSwap ? 0 : 1 }} />
+                <Img src={staticFile(A("app_memory_play2.png"))} style={{ position: "absolute", width: "100%", opacity: interpolate(frame, [T.progSwap - 6, T.progSwap + 6], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) }} />
+              </>
+            )}
+          </PhoneAssetFrame>
+        )}
+      </PhoneBubble>
 
       {/* 功能段聲音：展項介紹 → 人才培育原始音檔節錄（真素材） */}
       <Sequence from={VO.invite}><Audio src={staticFile(A("vo_memory_invite_tw.mp3"))} /></Sequence>

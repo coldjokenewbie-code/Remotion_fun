@@ -6,7 +6,7 @@ export const FONT = '"Noto Sans TC", "PingFang TC", "Heiti TC", sans-serif';
 export type QrGeometry = { x: number; y: number; size: number };
 
 // ── 標示卡（左上：展項名稱＋簡介）──────────────────────────────
-export const TitleCard: React.FC<{ title: string; subtitle: string; enterFrame: number; index: number }> = ({ title, subtitle, enterFrame, index }) => {
+export const TitleCard: React.FC<{ title: string; subtitle: string; enterFrame: number; index: number }> = ({ title, subtitle, enterFrame }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const p = spring({ frame: frame - enterFrame, fps, config: { damping: 200 } });
@@ -17,7 +17,7 @@ export const TitleCard: React.FC<{ title: string; subtitle: string; enterFrame: 
       background: "rgba(15,18,25,0.78)", backdropFilter: "blur(6px)",
       borderLeft: "6px solid #ff8a3d", borderRadius: 10, padding: "22px 30px", fontFamily: FONT,
     }}>
-      <div style={{ color: "#ffad73", fontSize: 18, fontWeight: 800, letterSpacing: 4 }}>導覽功能 {String(index).padStart(2, "0")} / 04</div>
+      <div style={{ color: "#ffad73", fontSize: 18, fontWeight: 800, letterSpacing: 4 }}>導覽功能</div>
       <div style={{ color: "#fff", fontSize: 44, fontWeight: 700, letterSpacing: 2, marginTop: 8 }}>{title}</div>
       <div style={{ color: "#d8dde6", fontSize: 24, marginTop: 8, letterSpacing: 1 }}>{subtitle}</div>
     </div>
@@ -73,6 +73,126 @@ export const SceneQrCallout: React.FC<{
   </>;
 };
 
+// ── 手機拉出示意（實景定點→白色楔形光束→手機背板）：避免手持手機像對空曠拍照 ──
+export const PhoneCallout: React.FC<{
+  anchor: { x: number; y: number }; visibleFrom: number; visibleTo: number;
+  phoneX?: number; showRing?: boolean;
+}> = ({ anchor, visibleFrom, visibleTo, phoneX = 380, showRing = true }) => {
+  const frame = useCurrentFrame();
+  const inP = interpolate(frame, [visibleFrom, visibleFrom + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const outP = interpolate(frame, [visibleTo - 12, visibleTo], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const p = Math.min(inP, outP);
+  if (p <= 0.001) return null;
+  const W = 400, H = 866, PAD = 16;
+  const cx = 960 + phoneX, cy = 540;
+  const panelLeft = cx - W / 2 - PAD, panelTop = cy - H / 2 - PAD;
+  const panelW = W + PAD * 2, panelH = H + PAD * 2;
+  const wedgeSpan = 300;
+  const topY = cy - wedgeSpan / 2, botY = cy + wedgeSpan / 2;
+  return <>
+    <svg style={{ position: "absolute", inset: 0, opacity: p }} width={1920} height={1080}>
+      <defs>
+        <linearGradient id="pcw" x1={anchor.x} y1={anchor.y} x2={panelLeft} y2={cy} gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.04)" />
+          <stop offset="55%" stopColor="rgba(255,255,255,0.16)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0.38)" />
+        </linearGradient>
+      </defs>
+      <polygon points={`${anchor.x},${anchor.y} ${panelLeft},${topY} ${panelLeft},${botY}`} fill="url(#pcw)" />
+      <line x1={anchor.x} y1={anchor.y} x2={panelLeft} y2={topY} stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} />
+      <line x1={anchor.x} y1={anchor.y} x2={panelLeft} y2={botY} stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} />
+      {showRing && <>
+        <circle cx={anchor.x} cy={anchor.y} r={26} fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth={3} />
+        <circle cx={anchor.x} cy={anchor.y} r={34} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth={1.5} />
+      </>}
+    </svg>
+    {/* 貼身細白框：標示「此為拉出的手機畫面」而不搶背景 */}
+    <div style={{
+      position: "absolute", left: panelLeft, top: panelTop, width: panelW, height: panelH,
+      borderRadius: 62, border: "2.5px solid rgba(255,255,255,0.85)", opacity: p,
+      boxShadow: "0 0 34px rgba(255,255,255,0.28), 0 24px 60px rgba(0,0,0,0.45)",
+      pointerEvents: "none",
+    }} />
+  </>;
+};
+
+type PhoneBubbleProps = {
+  anchor: { x: number; y: number };
+  visibleFrom: number;
+  visibleTo: number;
+  leaderWindow?: { from: number; to: number };
+  children: React.ReactNode;
+};
+
+// ── 手機拉出面板（L 形虛線拉線＋磨砂玻璃卡片）─────────────────
+export const PhoneBubble: React.FC<PhoneBubbleProps> = ({ anchor, visibleFrom, visibleTo, leaderWindow, children }) => {
+  const frame = useCurrentFrame();
+  const fadeIn = interpolate(frame, [visibleFrom, visibleFrom + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const fadeOut = interpolate(frame, [visibleTo - 12, visibleTo], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const opacity = Math.min(fadeIn, fadeOut);
+  const leaderIn = leaderWindow
+    ? interpolate(frame, [leaderWindow.from, leaderWindow.from + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    : 1;
+  const leaderOut = leaderWindow
+    ? interpolate(frame, [leaderWindow.to - 12, leaderWindow.to], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    : 1;
+  const leaderOpacity = Math.min(leaderIn, leaderOut);
+  if (opacity <= 0.001) return null;
+  const panel = { left: 1180, top: 90, width: 600, height: 900, radius: 34 };
+  const leaderPoints = `${anchor.x},${anchor.y + 45} ${anchor.x},930 ${panel.left - 6},930`;
+  return <div style={{ position: "absolute", inset: 0, opacity, pointerEvents: "none" }}>
+    <svg style={{ position: "absolute", inset: 0, opacity: leaderOpacity }} width={1920} height={1080}>
+      <polyline points={leaderPoints} fill="none" stroke="#fff" strokeWidth={3.5} strokeDasharray="10 7" />
+    </svg>
+    <div style={{
+      position: "absolute", left: panel.left, top: panel.top, width: panel.width, height: panel.height,
+      boxSizing: "border-box", borderRadius: panel.radius, overflow: "hidden",
+      clipPath: `inset(0 round ${panel.radius}px)`, background: "rgba(208,212,218,0.62)",
+      backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+      boxShadow: "0 30px 90px rgba(3,8,18,0.48), 0 8px 30px rgba(3,8,18,0.24)",
+    }}>
+      <div style={{
+        position: "absolute", left: 14, top: 14, zIndex: 1,
+        background: "rgba(15,18,25,0.86)", borderLeft: "4px solid #ff8a3d", borderRadius: 9,
+        padding: "10px 18px", color: "#fff", fontFamily: FONT, fontSize: 20, fontWeight: 700,
+        letterSpacing: 1.5, boxShadow: "0 8px 24px rgba(0,0,0,0.32)",
+      }}>手機操作畫面</div>
+      {children}
+    </div>
+  </div>;
+};
+
+// ── PO 手部素材持機框（hand.png 3x 挖空版：螢幕區透空、指尖壓螢幕保留）──
+// 素材量測（原 345px，×3 部署）：機身 slab (66,20)-(185,287)；挖空螢幕區×3 = (207,72) 339×774
+export const PhoneAssetFrame: React.FC<{
+  src: string; enterFrame: number; left: number; top: number;
+  overlay?: React.ReactNode; children: React.ReactNode;
+}> = ({ src, enterFrame, left, top, overlay, children }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const p = spring({ frame: frame - enterFrame, fps, config: { damping: 200 } });
+  const SIZE = 1035;
+  const SCREEN = { left: 207, top: 72, width: 339, height: 774 }; // 挖空區（素材座標）
+  const k = SCREEN.width / 390; // 內容 390×844 均勻縮放，垂直置中留黑
+  const contentTop = SCREEN.top + (SCREEN.height - 844 * k) / 2;
+  return (
+    <div style={{
+      position: "absolute", left, top, width: SIZE, height: SIZE,
+      transform: `translateY(${interpolate(p, [0, 1], [120, 0])}px)`, opacity: p,
+    }}>
+      <div style={{ position: "absolute", left: SCREEN.left, top: SCREEN.top, width: SCREEN.width, height: SCREEN.height, background: "#000", borderRadius: 18 }} />
+      <div style={{
+        position: "absolute", left: SCREEN.left, top: contentTop, width: 390, height: 844,
+        transform: `scale(${k})`, transformOrigin: "top left", overflow: "hidden", borderRadius: 14, background: "#111",
+      }}>
+        {children}
+      </div>
+      <Img src={staticFile(src)} style={{ position: "absolute", inset: 0, width: SIZE, height: SIZE, maxWidth: "none" }} />
+      {overlay}
+    </div>
+  );
+};
+
 // ── 字幕（底部置中；jp 可附中文小字）────────────────────────────
 export const Subtitle: React.FC<{ lines: { text: string; from: number; to: number; small?: string }[] }> = ({ lines }) => {
   const frame = useCurrentFrame();
@@ -95,7 +215,7 @@ export const Subtitle: React.FC<{ lines: { text: string; from: number; to: numbe
 };
 
 // ── 手機外框：screen 內容由 children 提供；hand 可選（手持示意，隨手機進場）──
-export const PhoneFrame: React.FC<{ enterFrame: number; x?: number; hand?: string; overlay?: React.ReactNode; children: React.ReactNode }> = ({ enterFrame, x = 0, hand, overlay, children }) => {
+export const PhoneFrame: React.FC<{ enterFrame: number; x?: number; y?: number; scale?: number; hand?: string; overlay?: React.ReactNode; children: React.ReactNode }> = ({ enterFrame, x = 0, y = 0, scale = 1.06, hand, overlay, children }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const p = spring({ frame: frame - enterFrame, fps, config: { damping: 200 } });
@@ -103,7 +223,7 @@ export const PhoneFrame: React.FC<{ enterFrame: number; x?: number; hand?: strin
   return (
     <div style={{
       position: "absolute", left: "50%", top: "50%",
-      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${interpolate(p, [0, 1], [420, 0])}px)) scale(1.06)`,
+      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y + interpolate(p, [0, 1], [420, 0])}px)) scale(${scale})`,
       opacity: p, width: W, height: H, borderRadius: 54, background: "#0c0d10",
       padding: 5, boxShadow: "0 30px 80px rgba(0,0,0,0.6), 0 0 0 2px #2a2d33",
     }}>
@@ -212,13 +332,13 @@ export const ScanView: React.FC<{
   );
 };
 
-export const EndCard: React.FC<{ feature: string; index: number; fade: number; isFinal?: boolean }> = ({ feature, index, fade, isFinal = false }) => {
+export const EndCard: React.FC<{ feature: string; index: number; fade: number; isFinal?: boolean }> = ({ feature, fade, isFinal = false }) => {
   if (fade <= 0.6) return null;
   const opacity = (fade - 0.6) / 0.4;
   return (
     <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity, fontFamily: FONT }}>
       <div style={{ color: "#e8ecf2", textAlign: "center" }}>
-        <div style={{ color: "#ffad73", fontSize: 17, fontWeight: 800, letterSpacing: 4 }}>{isFinal ? "組立工場行動導覽" : `導覽功能 ${String(index).padStart(2, "0")} / 04`}</div>
+        <div style={{ color: "#ffad73", fontSize: 17, fontWeight: 800, letterSpacing: 4 }}>{isFinal ? "組立工場行動導覽" : "導覽功能"}</div>
         <div style={{ fontSize: 34, letterSpacing: 4, fontWeight: 600, marginTop: 12 }}>{feature}</div>
       </div>
     </div>
