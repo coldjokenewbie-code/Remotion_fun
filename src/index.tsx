@@ -5,11 +5,23 @@ import { AirRaidDemo, airRaidDefaultProps, airRaidSchema } from "./asembly/AirRa
 import { ARDemo, arDemoDefaultProps, arDemoSchema } from "./asembly/ARDemo";
 import { MemoryVoiceDemo, memoryVoiceDefaultProps, memoryVoiceSchema } from "./asembly/MemoryVoiceDemo";
 import { QuestDemo, questDemoDefaultProps, questDemoSchema } from "./asembly/QuestDemo";
+import { OverviewIntro, overviewIntroDefaultProps, overviewIntroSchema } from "./asembly/OverviewIntro";
 
 // 四支示範片：時間軸/文案由 props 控制（Studio 右欄可調），總長隨「總長」欄位連動
 const RemotionRoot: React.FC = () => {
   return (
     <>
+      <Composition
+        id="OverviewIntro"
+        component={OverviewIntro}
+        durationInFrames={480}
+        fps={30}
+        width={1920}
+        height={1080}
+        schema={overviewIntroSchema}
+        defaultProps={overviewIntroDefaultProps}
+        calculateMetadata={({ props }) => ({ durationInFrames: props.時間軸.總長 })}
+      />
       <Composition
         id="AirRaidDemo"
         component={AirRaidDemo}
