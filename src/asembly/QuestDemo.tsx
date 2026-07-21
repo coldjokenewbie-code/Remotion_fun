@@ -3,26 +3,34 @@ import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame }
 import { z } from "zod";
 import { EndCard, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
 
-// ═══ 每日任務示範（組立工場練習所）──時間軸與文案由 props 控制（Studio 右欄可調）═══
+// ═══ 每日任務示範（組立工場練習所）──CDIC_O4 式軌道制：Sequence 名＝props 欄名 ═══
 // 腳本：PO 每日任務_W0710 pptx 五拍——開場任務頁→五機具列表→地圖→遊玩+掃機台QR記進度→完玩領證書
 // 本片無旁白；以字幕串接五段功能敘事
-const 幀 = (預設: number, 說明: string) => z.number().int().min(0).max(3000).default(預設).describe(說明);
+const 軌 = (開始: number, 結束: number, 說明: string) =>
+  z.object({
+    開始: z.number().int().min(0).max(3000).describe(`${說明}——開始幀`),
+    結束: z.number().int().min(0).max(3000).describe(`${說明}——結束幀`),
+  }).default({ 開始, 結束 });
 const 字幕列 = z.object({ 文字: z.string(), 起: z.number().int().min(0).max(3000), 訖: z.number().int().min(0).max(3000) });
 
 export const questDemoSchema = z.object({
   時間軸: z.object({
-    手機進場: 幀(20, "拉出面板＋手機出現幀"),
-    任務清單開始: 幀(60, "任務頁→五機具清單；標示卡同時消失"),
-    地圖開始: 幀(150, "清單→地圖頁"),
-    遊玩場景: 幀(180, "背景切遊玩照"),
-    機台掃描開始: 幀(230, "背景切鑽削機台＋掃描相機畫面（拉線同步顯示）"),
-    進度更新: 幀(285, "掃描完成→進度頁 3/5（拉線於 +10 幀收起）"),
-    證書場景: 幀(350, "背景切證書機台"),
-    完成頁: 幀(360, "進度頁→完成領證頁 5/5"),
-    淡出開始: 幀(456, "結尾黑幕淡出起點"),
-    書擋開始: 幀(464, "黑幕上開頭標題卡同款書擋幀起點"),
-    落款開始: 幀(546, "書擋結束→落款起點"),
-    總長: 幀(600, "影片總長（幀，30fps）"),
+    大廳場景: 軌(0, 180, "背景：練習所大廳渲染"),
+    遊玩場景: 軌(180, 230, "背景：遊玩實照"),
+    鑽削機台: 軌(230, 350, "背景：鑽削機台（掃 QR 段）"),
+    證書機台: 軌(350, 456, "背景：證書機台"),
+    標題段: 軌(0, 60, "左上功能標示卡顯示窗"),
+    機台QR示意: 軌(230, 285, "左側金色 QR 示意卡＋拉線顯示窗"),
+    手機面板: 軌(20, 456, "拉出面板＋手持手機在場窗"),
+    任務頁: 軌(20, 60, "手機：今日任務首頁"),
+    清單頁: 軌(60, 150, "手機：五機具清單"),
+    地圖頁: 軌(150, 230, "手機：練習所地圖"),
+    掃描畫面: 軌(230, 285, "手機：相機掃機台 QR"),
+    進度頁: 軌(285, 360, "手機：進度 3/5＋已記錄提示"),
+    完成頁: 軌(360, 456, "手機：5/5 完成領證書"),
+    黑幕收尾: 軌(456, 600, "黑幕淡入後持續至片尾"),
+    書擋標題: 軌(464, 546, "開頭標題卡同款書擋幀"),
+    落款: 軌(546, 600, "結尾落款；結束幀＝影片總長"),
   }),
   文案: z.object({
     標題: z.string().default("每日任務"),
@@ -40,12 +48,8 @@ export const questDemoSchema = z.object({
 export type QuestDemoProps = z.infer<typeof questDemoSchema>;
 export const questDemoDefaultProps: QuestDemoProps = questDemoSchema.parse({ 時間軸: {}, 文案: {} });
 
-type Timing = { phoneIn: number; listStart: number; mapStart: number; playBg: number; drillBg: number; progAt: number; certBg: number; doneAt: number; fadeOut: number; bookendAt: number; endCardAt: number; total: number };
-const toT = (t: QuestDemoProps["時間軸"]): Timing => ({
-  phoneIn: t.手機進場, listStart: t.任務清單開始, mapStart: t.地圖開始, playBg: t.遊玩場景,
-  drillBg: t.機台掃描開始, progAt: t.進度更新, certBg: t.證書場景, doneAt: t.完成頁,
-  fadeOut: t.淡出開始, bookendAt: t.書擋開始, endCardAt: t.落款開始, total: t.總長,
-});
+type Track = { 開始: number; 結束: number };
+const durT = (t: Track) => t.結束 - t.開始;
 
 // ── 書擋幀：開頭總覽片標題卡同款（黑幕上中央標題），與 OverviewIntro 開場呼應 ──
 const BookendTitle: React.FC<{ from: number; to: number }> = ({ from, to }) => {
@@ -189,68 +193,83 @@ const KioskBg: React.FC<{ src: string; inAt: number }> = ({ src, inAt }) => {
   );
 };
 
-const QuestBackground: React.FC<{ T: Timing }> = ({ T }) => {
+export const QuestDemo: React.FC<QuestDemoProps> = ({ 時間軸: T, 文案 }) => {
   const frame = useCurrentFrame();
-  const hallScale = interpolate(frame, [0, T.playBg], [1.04, 1.12]);
-  const playIn = interpolate(frame, [T.playBg, T.playBg + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  return <>
-    {frame < T.playBg + 8 && <Img src={staticFile(A("scene_hall.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${hallScale})` }} />}
-    {frame >= T.playBg && frame < T.drillBg && (
-      <div style={{ position: "absolute", inset: 0, opacity: playIn }}>
-        <Img src={staticFile(A("scene_play.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
-      </div>
-    )}
-    {frame >= T.drillBg && frame < T.certBg && <KioskBg src={A("kiosk_drill.png")} inAt={T.drillBg} />}
-    {frame >= T.certBg && <KioskBg src={A("kiosk_cert.png")} inAt={T.certBg} />}
-    <div style={{ position: "absolute", inset: 0, background: `rgba(5,8,14,${frame >= T.playBg ? 0.25 : 0})` }} />
-  </>;
-};
-
-export const QuestDemo: React.FC<QuestDemoProps> = ({ 時間軸, 文案 }) => {
-  const frame = useCurrentFrame();
-  const T = toT(時間軸);
+  const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
   // 黑幕須在書擋標題出現前收滿（書擋/落款皆在全黑上呈現）
-  const fade = interpolate(frame, [T.fadeOut, T.bookendAt + 4], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const fade = interpolate(frame, [T.黑幕收尾.開始, T.書擋標題.開始 + 4], [0, 1], clamp);
+  const hallScale = interpolate(frame, [T.大廳場景.開始, T.大廳場景.結束], [1.04, 1.12]);
+  const playIn = interpolate(frame, [T.遊玩場景.開始, T.遊玩場景.開始 + 8], [0, 1], clamp);
+  const 手機起 = T.手機面板.開始;
 
   return (
     <AbsoluteFill style={{ background: "#000", fontFamily: FONT }}>
-      <QuestBackground T={T} />
+      {/* 背景四軌 */}
+      <Sequence name="大廳場景" from={T.大廳場景.開始} durationInFrames={durT(T.大廳場景) + 8}>
+        <Img src={staticFile(A("scene_hall.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${hallScale})` }} />
+      </Sequence>
+      <Sequence name="遊玩場景" from={T.遊玩場景.開始} durationInFrames={durT(T.遊玩場景)}>
+        <div style={{ position: "absolute", inset: 0, opacity: playIn }}>
+          <Img src={staticFile(A("scene_play.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+        <div style={{ position: "absolute", inset: 0, background: "rgba(5,8,14,0.25)" }} />
+      </Sequence>
+      <Sequence name="鑽削機台" from={T.鑽削機台.開始} durationInFrames={durT(T.鑽削機台)}>
+        <KioskBg src={A("kiosk_drill.png")} inAt={0} />
+        <div style={{ position: "absolute", inset: 0, background: "rgba(5,8,14,0.25)" }} />
+      </Sequence>
+      <Sequence name="證書機台" from={T.證書機台.開始} durationInFrames={durT(T.證書機台)}>
+        <KioskBg src={A("kiosk_cert.png")} inAt={0} />
+        <div style={{ position: "absolute", inset: 0, background: "rgba(5,8,14,0.25)" }} />
+      </Sequence>
 
-      {/* 段1 標示卡 */}
-      <Sequence from={0} durationInFrames={T.listStart}>
+      <Sequence name="標題段" from={T.標題段.開始} durationInFrames={durT(T.標題段)}>
         <TitleCard index={4} title={文案.標題} subtitle={文案.副標} enterFrame={10} />
       </Sequence>
-      <Sequence from={T.drillBg} durationInFrames={T.progAt - T.drillBg}>
+      <Sequence name="機台QR示意" from={T.機台QR示意.開始} durationInFrames={durT(T.機台QR示意)}>
         <SceneQrCallout src={A("qr_quest_gold.png")} enterFrame={4} target={SCENE_QR}
           card={{ x: 70, y: 300, width: 240 }} />
       </Sequence>
 
-      {/* 手機全程在面板內；拉線僅於機台掃描段顯示 */}
-      <PhoneBubble anchor={SCENE_QR} visibleFrom={T.phoneIn} visibleTo={T.fadeOut}
-        leaderWindow={{ from: T.drillBg, to: T.progAt + 10 }}>
-        {frame >= T.phoneIn - 5 && (
-          <PhoneAssetFrame src={A("hand_po.png")} enterFrame={T.phoneIn} left={-76} top={10}>
-            {frame < T.listStart && <TaskHome />}
-            {frame >= T.listStart && frame < T.mapStart && <TaskList from={T.listStart + 4} />}
-            {frame >= T.mapStart && frame < T.drillBg && <MapScreen />}
-            {frame >= T.drillBg && frame < T.progAt && <ScanView bg={A("scan_panel.png")} from={T.drillBg + 5} to={T.progAt} qr={SCAN_QR} scanLabel={文案.掃描中標語} doneLabel={文案.掃描完成標語} />}
-            {frame >= T.progAt && frame < T.doneAt && <ProgressScreen toast={frame < T.progAt + 70} />}
-            {frame >= T.doneAt && <DoneScreen />}
+      {/* 手機面板：六個 App 畫面軌巢狀其中；拉線僅於機台QR示意窗顯示 */}
+      <Sequence name="手機面板" from={T.手機面板.開始} durationInFrames={durT(T.手機面板)}>
+        <PhoneBubble anchor={SCENE_QR} visibleFrom={0} visibleTo={durT(T.手機面板)}
+          leaderWindow={{ from: T.機台QR示意.開始 - 手機起, to: T.機台QR示意.結束 + 10 - 手機起 }}>
+          <PhoneAssetFrame src={A("hand_po.png")} enterFrame={0} left={-76} top={10}>
+            <Sequence name="任務頁" from={T.任務頁.開始 - 手機起} durationInFrames={durT(T.任務頁)}><TaskHome /></Sequence>
+            <Sequence name="清單頁" from={T.清單頁.開始 - 手機起} durationInFrames={durT(T.清單頁)}><TaskList from={4} /></Sequence>
+            <Sequence name="地圖頁" from={T.地圖頁.開始 - 手機起} durationInFrames={durT(T.地圖頁)}><MapScreen /></Sequence>
+            <Sequence name="掃描畫面" from={T.掃描畫面.開始 - 手機起} durationInFrames={durT(T.掃描畫面)}>
+              <ScanView bg={A("scan_panel.png")} from={5} to={durT(T.掃描畫面)} qr={SCAN_QR} scanLabel={文案.掃描中標語} doneLabel={文案.掃描完成標語} />
+            </Sequence>
+            <Sequence name="進度頁" from={T.進度頁.開始 - 手機起} durationInFrames={durT(T.進度頁)}><ProgToast /></Sequence>
+            <Sequence name="完成頁" from={T.完成頁.開始 - 手機起} durationInFrames={durT(T.完成頁)}><DoneScreen /></Sequence>
           </PhoneAssetFrame>
-        )}
-      </PhoneBubble>
+        </PhoneBubble>
+      </Sequence>
 
-      {/* 字幕 */}
-      <Subtitle lines={文案.字幕.map((l) => ({ text: l.文字, from: l.起, to: l.訖 }))} />
+      <Sequence name="字幕" from={0} durationInFrames={T.黑幕收尾.開始}>
+        <Subtitle lines={文案.字幕.map((l) => ({ text: l.文字, from: l.起, to: l.訖 }))} />
+      </Sequence>
 
-      {/* 結尾淡出 → 書擋標題卡（同開場） → 落款 */}
-      <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-      <BookendTitle from={T.bookendAt} to={T.endCardAt} />
-      {frame >= T.endCardAt && (
-        <div style={{ position: "absolute", inset: 0, opacity: interpolate(frame, [T.endCardAt, T.endCardAt + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) }}>
+      {/* 結尾：黑幕收滿 → 書擋標題卡（同開場） → 落款 */}
+      <Sequence name="黑幕收尾" from={T.黑幕收尾.開始} durationInFrames={durT(T.黑幕收尾)}>
+        <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
+      </Sequence>
+      <Sequence name="書擋標題" from={T.書擋標題.開始} durationInFrames={durT(T.書擋標題)}>
+        <BookendTitle from={0} to={durT(T.書擋標題)} />
+      </Sequence>
+      <Sequence name="落款" from={T.落款.開始} durationInFrames={durT(T.落款)}>
+        <div style={{ position: "absolute", inset: 0, opacity: interpolate(frame, [T.落款.開始, T.落款.開始 + 12], [0, 1], clamp) }}>
           <EndCard feature={文案.落款} index={4} fade={1} isFinal />
         </div>
-      )}
+      </Sequence>
     </AbsoluteFill>
   );
+};
+
+// 進度頁＋前 70 幀「已記錄」提示（Sequence 內相對幀）
+const ProgToast: React.FC = () => {
+  const frame = useCurrentFrame();
+  return <ProgressScreen toast={frame < 70} />;
 };

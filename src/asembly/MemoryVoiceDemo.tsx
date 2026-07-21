@@ -3,21 +3,28 @@ import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrent
 import { z } from "zod";
 import { EndCard, FONT, InfoCard, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, TitleCard } from "./shared";
 
-// ═══ 記憶中的聲音示範 v3（0B-3 職工的回憶）──時間軸與文案由 props 控制（Studio 右欄可調）═══
-// 場景：PO 提供 OB-3 三連（scene1 亮景→scene2 訪客舉手機→scene3 暗景聚光）
-// 開場靜音；掃描完成起播「人才培育.mp3」原始展示音檔（PO：音檔本身就是展示的一部分，非介紹旁白）
-const 幀 = (預設: number, 說明: string) => z.number().int().min(0).max(3000).default(預設).describe(說明);
+// ═══ 記憶中的聲音示範 v3（0B-3 職工的回憶）──CDIC_O4 式軌道制：Sequence 名＝props 欄名 ═══
+// 掃描完成起播「人才培育.mp3」原始展示音檔（PO：音檔本身就是展示的一部分）
+const 軌 = (開始: number, 結束: number, 說明: string) =>
+  z.object({
+    開始: z.number().int().min(0).max(3000).describe(`${說明}——開始幀`),
+    結束: z.number().int().min(0).max(3000).describe(`${說明}——結束幀`),
+  }).default({ 開始, 結束 });
 
 export const memoryVoiceSchema = z.object({
   時間軸: z.object({
-    場景2切換: 幀(36, "訪客舉手機中景進入幀"),
-    場景3切換: 幀(50, "暗景聚光近景進入幀"),
-    手機進場: 幀(62, "拉出面板＋手機出現幀"),
-    掃描結束: 幀(150, "掃描完成→記憶分頁；展示音檔（人才培育）同時起播"),
-    字卡切換: 幀(410, "小標字卡一→二切換幀"),
-    進度條切換: 幀(470, "App 進度條 0:01→0:04 畫面切換幀"),
-    淡出開始: 幀(574, "結尾黑幕淡出起點（音檔隨黑幕淡出）"),
-    總長: 幀(600, "影片總長（幀，30fps；音檔全長 21.5s，拉長總長可多播）"),
+    亮景全景: 軌(0, 36, "背景：職工的回憶亮景"),
+    訪客中景: 軌(36, 50, "背景：訪客舉手機中景"),
+    暗景聚光: 軌(50, 600, "背景：暗景聚光（其後持續）"),
+    標題段: 軌(0, 150, "左上功能標示卡顯示窗"),
+    開場QR示意: 軌(0, 36, "左側 QR 放大示意卡"),
+    手機面板: 軌(62, 574, "拉出面板＋手持手機在場窗"),
+    掃描畫面: 軌(72, 150, "手機內相機掃描畫面（結束＝切記憶分頁）"),
+    展示音檔: 軌(150, 574, "人才培育.mp3 播放窗（全長 21.5s，隨黑幕淡出）"),
+    小標卡一: 軌(150, 410, "第一張小標字卡顯示窗"),
+    小標卡二: 軌(410, 574, "第二張小標字卡顯示窗"),
+    進度畫面: 軌(470, 574, "App 進度條 0:04 畫面顯示窗"),
+    黑幕淡出: 軌(574, 600, "結尾黑幕＋落款；結束幀＝影片總長"),
   }),
   文案: z.object({
     標題: z.string().default("記憶中的聲音"),
@@ -31,89 +38,93 @@ export const memoryVoiceSchema = z.object({
 export type MemoryVoiceProps = z.infer<typeof memoryVoiceSchema>;
 export const memoryVoiceDefaultProps: MemoryVoiceProps = memoryVoiceSchema.parse({ 時間軸: {}, 文案: {} });
 
-type Timing = { s2aStart: number; s2bStart: number; phoneIn: number; scanEnd: number; cardSwap: number; progSwap: number; fadeOut: number; total: number };
-const toT = (t: MemoryVoiceProps["時間軸"]): Timing => ({
-  s2aStart: t.場景2切換, s2bStart: t.場景3切換, phoneIn: t.手機進場, scanEnd: t.掃描結束,
-  cardSwap: t.字卡切換, progSwap: t.進度條切換, fadeOut: t.淡出開始, total: t.總長,
-});
+type Track = { 開始: number; 結束: number };
+const dur = (t: Track) => t.結束 - t.開始;
 
 const A = (p: string) => `asembly/memory/${p}`;
 const SCENE_QR = { x: 118, y: 376, size: 26 };
 const SCAN_QR = { x: 241, y: 500, size: 131 };
 const SPOT3 = { x: "6.4%", y: "42.8%" };
 const PHONE_ANCHOR = { x: 123, y: 462 };
+const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
 
-const MemoryBackground: React.FC<{ T: Timing }> = ({ T }) => {
+export const MemoryVoiceDemo: React.FC<MemoryVoiceProps> = ({ 時間軸: T, 文案 }) => {
   const frame = useCurrentFrame();
-  const s1Scale = interpolate(frame, [0, T.s2aStart + 8], [1.05, 1.12]);
-  const in2 = interpolate(frame, [T.s2aStart, T.s2aStart + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const s2Scale = interpolate(frame, [T.s2aStart, T.s2bStart + 8], [1, 1.08], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const in3 = interpolate(frame, [T.s2bStart, T.s2bStart + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const push3 = interpolate(frame, [T.s2bStart, T.scanEnd + 20], [1.02, 1.3], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const bgDim = interpolate(frame, [T.scanEnd - 10, T.scanEnd + 20], [0, 0.25], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  return <>
-    {frame < T.s2aStart + 8 && <Img src={staticFile(A("scene1_0B3.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${s1Scale})` }} />}
-    {frame >= T.s2aStart && frame < T.s2bStart + 8 && (
-      <div style={{ position: "absolute", inset: 0, opacity: in2, transform: `scale(${s2Scale})` }}>
-        <Img src={staticFile(A("scene2_0B3.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
-      </div>
-    )}
-    {frame >= T.s2bStart && (
-      <div style={{ position: "absolute", inset: 0, opacity: in3, transform: `scale(${push3})`, transformOrigin: `${SPOT3.x} ${SPOT3.y}` }}>
-        <Img src={staticFile(A("scene3_0B3_dim.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
-      </div>
-    )}
-    <div style={{ position: "absolute", inset: 0, background: `rgba(5,8,14,${bgDim})` }} />
-  </>;
-};
-
-export const MemoryVoiceDemo: React.FC<MemoryVoiceProps> = ({ 時間軸, 文案 }) => {
-  const frame = useCurrentFrame();
-  const T = toT(時間軸);
-  const fade = interpolate(frame, [T.fadeOut, T.total - 6], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const fade = interpolate(frame, [T.黑幕淡出.開始, T.黑幕淡出.結束 - 6], [0, 1], clamp);
+  const s1Scale = interpolate(frame, [T.亮景全景.開始, T.亮景全景.結束 + 8], [1.05, 1.12]);
+  const in2 = interpolate(frame, [T.訪客中景.開始, T.訪客中景.開始 + 8], [0, 1], clamp);
+  const s2Scale = interpolate(frame, [T.訪客中景.開始, T.訪客中景.結束 + 8], [1, 1.08], clamp);
+  const in3 = interpolate(frame, [T.暗景聚光.開始, T.暗景聚光.開始 + 8], [0, 1], clamp);
+  const push3 = interpolate(frame, [T.暗景聚光.開始, T.掃描畫面.結束 + 20], [1.02, 1.3], clamp);
+  const bgDim = interpolate(frame, [T.掃描畫面.結束 - 10, T.掃描畫面.結束 + 20], [0, 0.25], clamp);
+  const audioFadeRel = T.黑幕淡出.開始 - T.展示音檔.開始;
+  const progSwapRel = T.進度畫面.開始 - T.掃描畫面.結束; // 記憶分頁 Sequence 內相對幀
 
   return (
     <AbsoluteFill style={{ background: "#000", fontFamily: FONT }}>
-      <MemoryBackground T={T} />
+      <Sequence name="亮景全景" from={T.亮景全景.開始} durationInFrames={dur(T.亮景全景) + 8}>
+        <Img src={staticFile(A("scene1_0B3.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${s1Scale})` }} />
+      </Sequence>
+      <Sequence name="訪客中景" from={T.訪客中景.開始} durationInFrames={dur(T.訪客中景) + 8}>
+        <div style={{ position: "absolute", inset: 0, opacity: in2, transform: `scale(${s2Scale})` }}>
+          <Img src={staticFile(A("scene2_0B3.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+      </Sequence>
+      <Sequence name="暗景聚光" from={T.暗景聚光.開始} durationInFrames={dur(T.暗景聚光)}>
+        <div style={{ position: "absolute", inset: 0, opacity: in3, transform: `scale(${push3})`, transformOrigin: `${SPOT3.x} ${SPOT3.y}` }}>
+          <Img src={staticFile(A("scene3_0B3_dim.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+        <div style={{ position: "absolute", inset: 0, background: `rgba(5,8,14,${bgDim})` }} />
+      </Sequence>
 
-      {/* 段1 覆蓋層 */}
-      <Sequence from={0} durationInFrames={T.scanEnd}>
+      <Sequence name="標題段" from={T.標題段.開始} durationInFrames={dur(T.標題段)}>
         <TitleCard index={3} title={文案.標題} subtitle={文案.副標} enterFrame={2} />
       </Sequence>
-      <Sequence from={0} durationInFrames={T.s2aStart}>
+      <Sequence name="開場QR示意" from={T.開場QR示意.開始} durationInFrames={dur(T.開場QR示意)}>
         <SceneQrCallout src={A("qr_memory_0B3_labeled.png")} enterFrame={20} target={SCENE_QR}
-          backgroundScale={interpolate(frame, [0, T.s2aStart + 18], [1.05, 1.12])}
-          card={{ x: 200, y: 400, width: 320 }} />
+          backgroundScale={s1Scale} card={{ x: 200, y: 400, width: 320 }} />
       </Sequence>
 
-      {/* 拉出面板：掃描→記憶分頁（真實進度條 0:01→0:04）；不能包 Sequence */}
-      <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={T.phoneIn} visibleTo={T.fadeOut}>
-        {frame >= T.phoneIn - 5 && (
-          <PhoneAssetFrame src={A("hand_po.png")} enterFrame={T.phoneIn} left={-76} top={10}>
-            {frame < T.scanEnd && <ScanView bg={A("scan_panel.png")} from={T.phoneIn + 10} to={T.scanEnd} qr={SCAN_QR} doneLabel={文案.掃描完成標語} />}
-            {frame >= T.scanEnd && (
-              <>
-                <Img src={staticFile(A("app_memory_play1.png"))} style={{ position: "absolute", width: "100%", opacity: frame >= T.progSwap ? 0 : 1 }} />
-                <Img src={staticFile(A("app_memory_play2.png"))} style={{ position: "absolute", width: "100%", opacity: interpolate(frame, [T.progSwap - 6, T.progSwap + 6], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) }} />
-              </>
-            )}
+      {/* 手機面板：掃描→記憶分頁（真實進度條 0:01→0:04） */}
+      <Sequence name="手機面板" from={T.手機面板.開始} durationInFrames={dur(T.手機面板)}>
+        <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={0} visibleTo={dur(T.手機面板)}>
+          <PhoneAssetFrame src={A("hand_po.png")} enterFrame={0} left={-76} top={10}>
+            <Sequence name="掃描畫面" from={T.掃描畫面.開始 - T.手機面板.開始} durationInFrames={dur(T.掃描畫面)}>
+              <ScanView bg={A("scan_panel.png")} from={10} to={dur(T.掃描畫面)} qr={SCAN_QR} doneLabel={文案.掃描完成標語} />
+            </Sequence>
+            <Sequence name="記憶分頁" from={T.掃描畫面.結束 - T.手機面板.開始} durationInFrames={dur(T.手機面板) - (T.掃描畫面.結束 - T.手機面板.開始)}>
+              <MemoryScreens progSwapRel={progSwapRel} />
+            </Sequence>
           </PhoneAssetFrame>
-        )}
-      </PhoneBubble>
-
-      {/* 展示音檔：人才培育.mp3 原檔（音檔本身即展示內容），掃描完成起播、隨黑幕淡出 */}
-      <Sequence from={T.scanEnd} durationInFrames={T.total - T.scanEnd}>
-        <Audio src={staticFile(A("vo_memory_full.mp3"))}
-          volume={(f) => interpolate(f, [T.fadeOut - T.scanEnd - 6, T.fadeOut - T.scanEnd + 18], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
+        </PhoneBubble>
       </Sequence>
 
-      {/* 小標字卡（原字幕文字改卡片呈現；切換時點可調） */}
-      {frame >= T.scanEnd && frame < T.cardSwap && <InfoCard at={T.scanEnd + 4} body={文案.小標卡一} />}
-      {frame >= T.cardSwap && frame < T.fadeOut && <InfoCard at={T.cardSwap} body={文案.小標卡二} />}
+      {/* 展示音檔（人才培育原檔；隨黑幕淡出） */}
+      <Sequence name="展示音檔" from={T.展示音檔.開始} durationInFrames={dur(T.展示音檔) + (T.黑幕淡出.結束 - T.黑幕淡出.開始)}>
+        <Audio src={staticFile(A("vo_memory_full.mp3"))}
+          volume={(f) => interpolate(f, [audioFadeRel - 6, audioFadeRel + 18], [1, 0], clamp)} />
+      </Sequence>
 
-      {/* 結尾淡出＋落款 */}
-      <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-      <EndCard feature={文案.落款} index={3} fade={fade} />
+      <Sequence name="小標卡一" from={T.小標卡一.開始} durationInFrames={dur(T.小標卡一)}>
+        <InfoCard at={4} body={文案.小標卡一} />
+      </Sequence>
+      <Sequence name="小標卡二" from={T.小標卡二.開始} durationInFrames={dur(T.小標卡二)}>
+        <InfoCard at={0} body={文案.小標卡二} />
+      </Sequence>
+
+      <Sequence name="黑幕淡出" from={T.黑幕淡出.開始} durationInFrames={dur(T.黑幕淡出)}>
+        <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
+        <EndCard feature={文案.落款} index={3} fade={fade} />
+      </Sequence>
     </AbsoluteFill>
   );
+};
+
+// 記憶分頁：play1→play2（progSwapRel＝本 Sequence 內相對切換幀，對應「進度畫面.開始」）
+const MemoryScreens: React.FC<{ progSwapRel: number }> = ({ progSwapRel }) => {
+  const frame = useCurrentFrame();
+  return <>
+    <Img src={staticFile(A("app_memory_play1.png"))} style={{ position: "absolute", width: "100%", opacity: frame >= progSwapRel ? 0 : 1 }} />
+    <Img src={staticFile(A("app_memory_play2.png"))} style={{ position: "absolute", width: "100%", opacity: interpolate(frame, [progSwapRel - 6, progSwapRel + 6], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) }} />
+  </>;
 };

@@ -40,7 +40,7 @@ export const overviewIntroSchema = z.object({
     掃展牌卡: z.object({ 標題: z.string(), 副標: z.string() }).default({ 標題: "掃描展牌 QR code", 副標: "直達展品功能頁" }),
     服務台卡: z.object({ 標題: z.string(), 副標: z.string() }).default({ 標題: "掃描服務台 QR code 或點選連結", 副標: "進入首頁尋找服務" }),
     掃描完成標語: z.string().default("✓ 已辨識・開啟展品功能頁"),
-    情境卡: z.array(z.object({ 標題: z.string(), 副標: z.string() })).length(4).default([
+    情境卡: z.array(z.object({ 標題: z.string(), 副標: z.string() })).min(4).default([
       { 標題: "找休息與服務", 副標: "地圖標示服務地點" },
       { 標題: "不知道接下來看什麼", 副標: "組立·下一站推薦" },
       { 標題: "重要展演即將開始", 副標: "主動提醒" },
@@ -68,8 +68,9 @@ const SceneLayer: React.FC<{ T: OverviewIntroProps["時間軸"] }> = ({ T }) => 
   return <>
     {scenes.map((s) => {
       if (frame < s.from || frame >= s.to) return null;
+      // 第 0 幀起始的場景不淡入（PO：開場即有圖）
       const opacity = Math.min(
-        interpolate(frame, [s.from, s.from + XFADE], [0, 1], clamp),
+        s.from <= 0 ? 1 : interpolate(frame, [s.from, s.from + XFADE], [0, 1], clamp),
         interpolate(frame, [s.to - XFADE, s.to], [1, 0], clamp),
       );
       const kb = interpolate(frame, [s.from, s.to], [1.04, 1.1], clamp);
@@ -131,9 +132,10 @@ const SlidePanel: React.FC<{ src: string; enterFrame: number }> = ({ src, enterF
 // ── 標題段內容（相對幀；PO：置於下三分之一避開老職工）───────────
 const IntroTitle: React.FC<{ len: number; 館名: string; 主標: string; 服務定位: string }> = ({ len, 館名, 主標, 服務定位 }) => {
   const frame = useCurrentFrame();
-  const titleOpacity = interpolate(frame, [10, 28, len - 15, len], [0, 1, 1, 0], clamp);
-  const serviceOpacity = interpolate(frame, [60, 76, len - 8, len], [0, 1, 1, 0], clamp);
-  const titleScale = interpolate(frame, [10, 70], [0.94, 1], clamp);
+  // PO：開場不淡入，第 0 幀即整幅標題；僅保留段末淡出
+  const titleOpacity = interpolate(frame, [len - 15, len], [1, 0], clamp);
+  const serviceOpacity = interpolate(frame, [Math.min(50, len * 0.5), Math.min(62, len * 0.6), len - 8, len], [0, 1, 1, 0], clamp);
+  const titleScale = 1;
   return <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: 56, fontFamily: FONT }}>
     <div style={{ textAlign: "center", opacity: titleOpacity, transform: `scale(${titleScale})`, color: "#fff", textShadow: "0 4px 24px rgba(0,0,0,0.7)" }}>
       <div style={{ color: "#ffad73", fontSize: 26, fontWeight: 800, letterSpacing: 8 }}>{館名}</div>
