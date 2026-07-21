@@ -1,11 +1,11 @@
 import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { z } from "zod";
-import { EndCard, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
+import { EndCard, FONT, InfoCard, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, TitleCard } from "./shared";
 
-// ═══ 記憶中的聲音示範 v2（0B-3 職工的回憶）──時間軸與文案由 props 控制（Studio 右欄可調）═══
+// ═══ 記憶中的聲音示範 v3（0B-3 職工的回憶）──時間軸與文案由 props 控制（Studio 右欄可調）═══
 // 場景：PO 提供 OB-3 三連（scene1 亮景→scene2 訪客舉手機→scene3 暗景聚光）
-// 開場靜音；邀約旁白於「掃描結束」起播，前輩口述於「口述開始」起播，字幕連動
+// 開場靜音；掃描完成起播「人才培育.mp3」原始展示音檔（PO：音檔本身就是展示的一部分，非介紹旁白）
 const 幀 = (預設: number, 說明: string) => z.number().int().min(0).max(3000).default(預設).describe(說明);
 
 export const memoryVoiceSchema = z.object({
@@ -13,29 +13,28 @@ export const memoryVoiceSchema = z.object({
     場景2切換: 幀(36, "訪客舉手機中景進入幀"),
     場景3切換: 幀(50, "暗景聚光近景進入幀"),
     手機進場: 幀(62, "拉出面板＋手機出現幀"),
-    掃描結束: 幀(150, "掃描完成→記憶分頁；邀約旁白與字幕同時起播"),
-    口述開始: 幀(410, "前輩口述音檔起播幀"),
-    口述長度: 幀(156, "口述節錄播放長度（幀）"),
+    掃描結束: 幀(150, "掃描完成→記憶分頁；展示音檔（人才培育）同時起播"),
+    字卡切換: 幀(410, "小標字卡一→二切換幀"),
     進度條切換: 幀(470, "App 進度條 0:01→0:04 畫面切換幀"),
-    淡出開始: 幀(574, "結尾黑幕淡出起點"),
-    總長: 幀(600, "影片總長（幀，30fps）"),
+    淡出開始: 幀(574, "結尾黑幕淡出起點（音檔隨黑幕淡出）"),
+    總長: 幀(600, "影片總長（幀，30fps；音檔全長 21.5s，拉長總長可多播）"),
   }),
   文案: z.object({
     標題: z.string().default("記憶中的聲音"),
     副標: z.string().default("掃描展板 QR，播放前輩口述與工作記憶"),
     掃描完成標語: z.string().default("✓ 已辨識・開啟記憶中的聲音"),
-    邀約字幕: z.string().default("掃描展板，可聆聽前輩口述；從工作與生活片段，保存工場記憶。"),
-    口述字幕: z.string().default("1938 年，由臺北鐵道工技手新鄉重夫，"),
+    小標卡一: z.string().default("掃描展板，可聆聽前輩口述；從工作與生活片段，保存工場記憶。"),
+    小標卡二: z.string().default("1938 年，由臺北鐵道工技手新鄉重夫，"),
     落款: z.string().default("掃描展板 QR，播放前輩口述記憶"),
   }),
 });
 export type MemoryVoiceProps = z.infer<typeof memoryVoiceSchema>;
 export const memoryVoiceDefaultProps: MemoryVoiceProps = memoryVoiceSchema.parse({ 時間軸: {}, 文案: {} });
 
-type Timing = { s2aStart: number; s2bStart: number; phoneIn: number; scanEnd: number; voMemory: number; memoryDuration: number; progSwap: number; fadeOut: number; total: number };
+type Timing = { s2aStart: number; s2bStart: number; phoneIn: number; scanEnd: number; cardSwap: number; progSwap: number; fadeOut: number; total: number };
 const toT = (t: MemoryVoiceProps["時間軸"]): Timing => ({
   s2aStart: t.場景2切換, s2bStart: t.場景3切換, phoneIn: t.手機進場, scanEnd: t.掃描結束,
-  voMemory: t.口述開始, memoryDuration: t.口述長度, progSwap: t.進度條切換, fadeOut: t.淡出開始, total: t.總長,
+  cardSwap: t.字卡切換, progSwap: t.進度條切換, fadeOut: t.淡出開始, total: t.總長,
 });
 
 const A = (p: string) => `asembly/memory/${p}`;
@@ -102,15 +101,15 @@ export const MemoryVoiceDemo: React.FC<MemoryVoiceProps> = ({ 時間軸, 文案 
         )}
       </PhoneBubble>
 
-      {/* 功能段聲音：展項介紹 → 人才培育原始音檔節錄（真素材）；起點隨時間軸連動 */}
-      <Sequence from={T.scanEnd}><Audio src={staticFile(A("vo_memory_invite_tw.mp3"))} /></Sequence>
-      <Sequence from={T.voMemory} durationInFrames={T.memoryDuration}><Audio src={staticFile(A("vo_s2_memory_excerpt.mp3"))} /></Sequence>
+      {/* 展示音檔：人才培育.mp3 原檔（音檔本身即展示內容），掃描完成起播、隨黑幕淡出 */}
+      <Sequence from={T.scanEnd} durationInFrames={T.total - T.scanEnd}>
+        <Audio src={staticFile(A("vo_memory_full.mp3"))}
+          volume={(f) => interpolate(f, [T.fadeOut - T.scanEnd - 6, T.fadeOut - T.scanEnd + 18], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
+      </Sequence>
 
-      {/* 字幕（時間隨時間軸連動，只需改文字） */}
-      <Subtitle lines={[
-        { text: 文案.邀約字幕, from: T.scanEnd, to: T.voMemory },
-        { text: 文案.口述字幕, from: T.voMemory, to: T.voMemory + T.memoryDuration },
-      ]} />
+      {/* 小標字卡（原字幕文字改卡片呈現；切換時點可調） */}
+      {frame >= T.scanEnd && frame < T.cardSwap && <InfoCard at={T.scanEnd + 4} body={文案.小標卡一} />}
+      {frame >= T.cardSwap && frame < T.fadeOut && <InfoCard at={T.cardSwap} body={文案.小標卡二} />}
 
       {/* 結尾淡出＋落款 */}
       <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />

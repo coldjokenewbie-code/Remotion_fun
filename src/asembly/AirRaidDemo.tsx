@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { z } from "zod";
-import { EndCard, FingerTap, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, TitleCard } from "./shared";
+import { EndCard, FingerTap, FONT, InfoCard, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, TitleCard } from "./shared";
 
 // ═══ 時間軸與文案改由 props 控制（Remotion Studio 右欄可直接調；預設值＝v8 定稿）═══
 // 空間圖 v3（PO 提供 0B-7 展台渲染三連）：scene1 亮景全景 → scene2 暗景中景（QR 聚光）→ scene3 近景正視
@@ -47,21 +47,6 @@ const SCENE_QR = { x: 653, y: 810, size: 16 };
 const SCAN_QR = { x: 123, y: 544, size: 123 };
 // 段2 手機拉出示意：沿用 scene3 zoom transformOrigin（SPOT3，已量測之定點）換算絕對像素
 const PHONE_ANCHOR = { x: 240, y: 605 };
-
-const InfoCard: React.FC<{ at: number; title?: string; body: string }> = ({ at, title, body }) => {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [at - 8, at + 6], [0, 1], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
-  });
-  return (
-    <div style={{ position: "absolute", left: 72, top: 300, width: 650, opacity, fontFamily: FONT,
-      background: "rgba(15,18,25,0.86)", borderLeft: "6px solid #ff8a3d", borderRadius: 10,
-      padding: "22px 28px", boxShadow: "0 12px 40px rgba(0,0,0,0.35)" }}>
-      {title && <div style={{ color: "#ffad73", fontSize: 22, fontWeight: 800, letterSpacing: 4 }}>{title}</div>}
-      <div style={{ color: "#fff", fontSize: 30, fontWeight: 650, marginTop: title ? 10 : 0, lineHeight: 1.6 }}>{body}</div>
-    </div>
-  );
-};
 
 const AirRaidBackground: React.FC<{ T: Timing }> = ({ T }) => {
   const frame = useCurrentFrame();

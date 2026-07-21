@@ -193,6 +193,22 @@ export const PhoneAssetFrame: React.FC<{
   );
 };
 
+// ── 小標字卡（左側深底橘邊；title 可省）─────────────────────────
+export const InfoCard: React.FC<{ at: number; title?: string; body: string }> = ({ at, title, body }) => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [at - 8, at + 6], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  return (
+    <div style={{ position: "absolute", left: 72, top: 300, width: 650, opacity, fontFamily: FONT,
+      background: "rgba(15,18,25,0.86)", borderLeft: "6px solid #ff8a3d", borderRadius: 10,
+      padding: "22px 28px", boxShadow: "0 12px 40px rgba(0,0,0,0.35)" }}>
+      {title && <div style={{ color: "#ffad73", fontSize: 22, fontWeight: 800, letterSpacing: 4 }}>{title}</div>}
+      <div style={{ color: "#fff", fontSize: 30, fontWeight: 650, marginTop: title ? 10 : 0, lineHeight: 1.6 }}>{body}</div>
+    </div>
+  );
+};
+
 // ── 字幕（底部置中；jp 可附中文小字）────────────────────────────
 export const Subtitle: React.FC<{ lines: { text: string; from: number; to: number; small?: string }[] }> = ({ lines }) => {
   const frame = useCurrentFrame();
