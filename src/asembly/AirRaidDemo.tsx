@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { z } from "zod";
-import { EndCard, FingerTap, FONT, InfoCard, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, TitleCard } from "./shared";
+import { FingerTap, FONT, InfoCard, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, TitleCard } from "./shared";
 
 // ═══ CDIC_O4 式軌道制：每軌 {開始,結束}，Sequence 名＝props 欄名（時間軸面板左右對應）═══
 // 空間圖 v3（PO 提供 0B-7 展台渲染三連）；開場靜音，旁白自「中文旁白」軌起
@@ -30,7 +30,6 @@ export const airRaidSchema = z.object({
     語音說明卡: z.string().default("以語音介紹展示內容，參觀民眾可以邊聽邊操作望遠鏡，觀看空襲遺留的歷史痕跡。"),
     多語卡標題: z.string().default("多語服務"),
     多語卡內容: z.string().default("同一展項支援中・英・日語音與介面切換"),
-    落款: z.string().default("語音導覽與中・英・日多語服務"),
   }),
 });
 export type AirRaidProps = z.infer<typeof airRaidSchema>;
@@ -80,7 +79,7 @@ export const AirRaidDemo: React.FC<AirRaidProps> = ({ 時間軸: T, 文案 }) =>
       </Sequence>
 
       <Sequence name="標題段" from={T.標題段.開始} durationInFrames={dur(T.標題段)}>
-        <TitleCard index={1} title={文案.標題} subtitle={文案.副標} enterFrame={2} />
+        <TitleCard index={1} title={文案.標題} subtitle={文案.副標} enterFrame={0} />
       </Sequence>
       <Sequence name="開場QR示意" from={T.開場QR示意.開始} durationInFrames={dur(T.開場QR示意)}>
         <SceneQrCallout src={A("qr_audio_0B7_labeled.png")} enterFrame={20} target={SCENE_QR} backgroundScale={s1Scale} />
@@ -91,7 +90,7 @@ export const AirRaidDemo: React.FC<AirRaidProps> = ({ 時間軸: T, 文案 }) =>
         <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={0} visibleTo={dur(T.手機面板)}>
           <PhoneAssetFrame src={A("hand_po.png")} enterFrame={0} left={-76} top={10}
             overlay={<FingerTap src={A("finger_tap_po.png")} tip={[881, 161]} imgSize={1024} scale={0.87}
-              target={[476, 119]} start={jpRel - 36} tapAt={jpRel - 6} end={jpRel + 38} from={[-560, 500]} />}>
+              target={[476, 139]} start={jpRel - 36} tapAt={jpRel - 6} end={jpRel + 38} from={[-560, 500]} />}>
             <Sequence name="掃描畫面" from={T.掃描畫面.開始 - T.手機面板.開始} durationInFrames={dur(T.掃描畫面)}>
               <ScanView bg={A("scan_screen_po.png")} from={10} to={dur(T.掃描畫面)} qr={SCAN_QR} chrome={false} />
             </Sequence>
@@ -113,7 +112,6 @@ export const AirRaidDemo: React.FC<AirRaidProps> = ({ 時間軸: T, 文案 }) =>
 
       <Sequence name="黑幕淡出" from={T.黑幕淡出.開始} durationInFrames={dur(T.黑幕淡出)}>
         <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-        <EndCard feature={文案.落款} index={1} fade={fade} />
       </Sequence>
     </AbsoluteFill>
   );

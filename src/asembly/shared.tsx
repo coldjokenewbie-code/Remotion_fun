@@ -9,7 +9,7 @@ export type QrGeometry = { x: number; y: number; size: number };
 export const TitleCard: React.FC<{ title: string; subtitle: string; enterFrame: number; index: number }> = ({ title, subtitle, enterFrame }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const p = spring({ frame: frame - enterFrame, fps, config: { damping: 200 } });
+  const p = enterFrame <= 0 ? 1 : spring({ frame: frame - enterFrame, fps, config: { damping: 200 } });
   return (
     <div style={{
       position: "absolute", top: 56, left: 64, maxWidth: 980,
@@ -173,8 +173,11 @@ export const PhoneAssetFrame: React.FC<{
   const p = spring({ frame: frame - enterFrame, fps, config: { damping: 200 } });
   const SIZE = 1035;
   const SCREEN = { left: 207, top: 72, width: 339, height: 774 }; // 挖空區（素材座標）
-  const k = SCREEN.width / 390; // 內容 390×844 均勻縮放，垂直置中留黑
-  const contentTop = SCREEN.top + (SCREEN.height - 844 * k) / 2;
+  const k = SCREEN.width / 390; // 內容 390×844 均勻縮放
+  // 貼底對齊＋下沉：消除內容與下錶框黑縫，並把截圖烘入的 home-indicator 白邊（約13px）藏進錶框後
+  // （PO 2026-07-22 兩輪指正）；上緣留黑＝瀏海區。改此值需同步平移各片 FingerTap target y
+  const CHIN_HIDE = 13;
+  const contentTop = SCREEN.top + (SCREEN.height - (844 - CHIN_HIDE) * k);
   return (
     <div style={{
       position: "absolute", left, top, width: SIZE, height: SIZE,
@@ -207,6 +210,31 @@ export const InfoCard: React.FC<{ at: number; title?: string; body: string }> = 
       <div style={{ color: "#fff", fontSize: 30, fontWeight: 650, marginTop: title ? 10 : 0, lineHeight: 1.6 }}>{body}</div>
     </div>
   );
+};
+
+// ── 說明卡串（字幕替代；PO 2026-07-22 全片禁字幕、只用字卡）─────
+// 底部置中（原字幕區，不壓左側 QR 卡/圖像），卡片樣式同 InfoCard 深底橘邊
+export const InfoCardRun: React.FC<{ lines: { text: string; from: number; to: number }[] }> = ({ lines }) => {
+  const frame = useCurrentFrame();
+  return <>
+    {lines.map((l, i) => {
+      if (frame < l.from || frame >= l.to) return null;
+      const opacity = Math.min(
+        interpolate(frame, [l.from + 2, l.from + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+        interpolate(frame, [l.to - 8, l.to], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+      );
+      return (
+        <div key={i} style={{
+          position: "absolute", bottom: 52, left: "50%", transform: "translateX(-50%)",
+          maxWidth: 1100, opacity, fontFamily: FONT,
+          background: "rgba(15,18,25,0.86)", borderLeft: "6px solid #ff8a3d", borderRadius: 10,
+          padding: "16px 30px", boxShadow: "0 12px 40px rgba(0,0,0,0.35)",
+        }}>
+          <div style={{ color: "#fff", fontSize: 30, fontWeight: 650, lineHeight: 1.55, whiteSpace: "nowrap" }}>{l.text}</div>
+        </div>
+      );
+    })}
+  </>;
 };
 
 // ── 字幕（底部置中；jp 可附中文小字）────────────────────────────
@@ -347,19 +375,6 @@ export const ScanView: React.FC<{
           {doneLabel}
         </div>
       )}
-    </div>
-  );
-};
-
-export const EndCard: React.FC<{ feature: string; index: number; fade: number; isFinal?: boolean }> = ({ feature, fade, isFinal = false }) => {
-  if (fade <= 0.6) return null;
-  const opacity = (fade - 0.6) / 0.4;
-  return (
-    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity, fontFamily: FONT }}>
-      <div style={{ color: "#e8ecf2", textAlign: "center" }}>
-        <div style={{ color: "#ffad73", fontSize: 17, fontWeight: 800, letterSpacing: 4 }}>{isFinal ? "組立工場行動導覽" : "導覽功能"}</div>
-        <div style={{ fontSize: 34, letterSpacing: 4, fontWeight: 600, marginTop: 12 }}>{feature}</div>
-      </div>
     </div>
   );
 };

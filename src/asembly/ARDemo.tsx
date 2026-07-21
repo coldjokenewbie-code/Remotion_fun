@@ -1,16 +1,16 @@
 import React from "react";
 import { AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { z } from "zod";
-import { EndCard, FingerTap, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, Subtitle, TitleCard } from "./shared";
+import { FingerTap, FONT, PhoneAssetFrame, PhoneBubble, ScanView, SceneQrCallout, InfoCardRun, TitleCard } from "./shared";
 
 // ═══ AR 導覽功能示範（G-1-3 機坑×台工1677）──CDIC_O4 式軌道制：Sequence 名＝props 欄名 ═══
-// 本片無旁白；字幕逐句含起訖幀（絕對幀）
+// 本片無旁白；說明卡逐句含起訖幀（絕對幀）
 const 軌 = (開始: number, 結束: number, 說明: string) =>
   z.object({
     開始: z.number().int().min(0).max(3000).describe(`${說明}——開始幀`),
     結束: z.number().int().min(0).max(3000).describe(`${說明}——結束幀`),
   }).default({ 開始, 結束 });
-const 字幕列 = z.object({ 文字: z.string(), 起: z.number().int().min(0).max(3000), 訖: z.number().int().min(0).max(3000) });
+const 說明卡列 = z.object({ 文字: z.string(), 起: z.number().int().min(0).max(3000), 訖: z.number().int().min(0).max(3000) });
 
 export const arDemoSchema = z.object({
   時間軸: z.object({
@@ -22,14 +22,13 @@ export const arDemoSchema = z.object({
     手機面板: 軌(58, 426, "拉出面板＋手持手機在場窗"),
     掃描畫面: 軌(68, 120, "手機內相機掃描畫面（結束＝切 AR 分頁）"),
     手指點按: 軌(230, 304, "手指滑入點 AR 鈕（點按於開始+30 幀；重現緊隨其後）"),
-    黑幕淡出: 軌(426, 450, "結尾黑幕＋落款；結束幀＝影片總長"),
+    黑幕淡出: 軌(426, 450, "結尾黑幕；結束幀＝影片總長"),
   }),
   文案: z.object({
     標題: z.string().default("AR 探索"),
     副標: z.string().default("掃描展板 QR，在原址疊合機具歷史影像"),
     掃描完成標語: z.string().default("✓ 已辨識・開啟 AR 探索"),
-    落款: z.string().default("AR 於展項原址呈現機具影像"),
-    字幕: z.array(字幕列).default([
+    說明卡: z.array(說明卡列).default([
       { 文字: "掃描展板 QR，開啟 AR 模式。", 起: 80, 訖: 150 },
       { 文字: "系統辨識展項位置與台工 1677 機具資料。", 起: 150, 訖: 230 },
       { 文字: "點選畫面按鈕，在機坑原址疊合機具影像。", 起: 230, 訖: 330 },
@@ -83,7 +82,7 @@ export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
       </Sequence>
 
       <Sequence name="標題段" from={T.標題段.開始} durationInFrames={dur(T.標題段)}>
-        <TitleCard index={2} title={文案.標題} subtitle={文案.副標} enterFrame={5} />
+        <TitleCard index={2} title={文案.標題} subtitle={文案.副標} enterFrame={0} />
       </Sequence>
       <Sequence name="開場QR示意" from={T.開場QR示意.開始} durationInFrames={dur(T.開場QR示意)}>
         <SceneQrCallout src={A("qr_ar_G13_labeled.png")} enterFrame={15} target={SCENE_QR} backgroundScale={s1Scale} />
@@ -94,7 +93,7 @@ export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
         <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={0} visibleTo={dur(T.手機面板)}>
           <PhoneAssetFrame src={A("hand_po.png")} enterFrame={0} left={-76} top={10}
             overlay={<FingerTap src={A("finger_tap_po.png")} tip={[881, 161]} imgSize={1024} scale={0.87}
-              target={[381, 712]} start={tapRel.start} tapAt={tapRel.tapAt} end={tapRel.end} from={[-560, 500]} />}>
+              target={[381, 732]} start={tapRel.start} tapAt={tapRel.tapAt} end={tapRel.end} from={[-560, 500]} />}>
             <Sequence name="掃描畫面" from={scanStartRel} durationInFrames={dur(T.掃描畫面)}>
               <ScanView bg={A("scan_panel.png")} from={10} to={dur(T.掃描畫面)} qr={SCAN_QR} doneLabel={文案.掃描完成標語} />
             </Sequence>
@@ -106,13 +105,12 @@ export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
         </PhoneBubble>
       </Sequence>
 
-      <Sequence name="字幕" from={0} durationInFrames={T.黑幕淡出.開始}>
-        <Subtitle lines={文案.字幕.map((l) => ({ text: l.文字, from: l.起, to: l.訖 }))} />
+      <Sequence name="說明卡" from={0} durationInFrames={T.黑幕淡出.開始}>
+        <InfoCardRun lines={文案.說明卡.map((l) => ({ text: l.文字, from: l.起, to: l.訖 }))} />
       </Sequence>
 
       <Sequence name="黑幕淡出" from={T.黑幕淡出.開始} durationInFrames={dur(T.黑幕淡出)}>
         <div style={{ position: "absolute", inset: 0, background: "#000", opacity: fade, pointerEvents: "none" }} />
-        <EndCard feature={文案.落款} index={2} fade={fade} />
       </Sequence>
     </AbsoluteFill>
   );
