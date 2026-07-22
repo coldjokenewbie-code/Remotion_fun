@@ -11,7 +11,13 @@ const 軌 = (開始: number, 結束: number, 說明: string) =>
     開始: z.number().int().min(0).max(3000).describe(`${說明}——開始幀`),
     結束: z.number().int().min(0).max(3000).describe(`${說明}——結束幀`),
   }).default({ 開始, 結束 });
-const 說明卡列 = z.object({ 文字: z.string(), 起: z.number().int().min(0).max(3000), 訖: z.number().int().min(0).max(3000) });
+const 說明卡列 = z.object({
+  文字: z.string(), 起: z.number().int().min(0).max(3000), 訖: z.number().int().min(0).max(3000),
+  標題: z.string().optional().describe("小標（有值＝兩行呈現）"),
+  X: z.number().min(0).max(1920).optional().describe("浮動位置 X（與 Y 併用；缺省＝底部置中）"),
+  Y: z.number().min(0).max(1080).optional().describe("浮動位置 Y"),
+  寬: z.number().optional().describe("浮動卡寬（預設 620）"),
+});
 
 export const questDemoSchema = z.object({
   時間軸: z.object({
@@ -20,6 +26,8 @@ export const questDemoSchema = z.object({
     補充場景: 軌(500, 630, "背景：大廳（直接開 App＋任務地圖）"),
     證書機台: 軌(630, 750, "背景：證書機台（下載證書）"),
     標題段: 軌(0, 60, "左上功能標示卡顯示窗"),
+    段落一標卡: 軌(122, 500, "左上第一階段小標卡（先玩再接任務）"),
+    段落二標卡: 軌(500, 750, "左上第二階段小標卡（直接開 App）"),
     機台QR示意: 軌(220, 280, "左側金色 QR 示意卡＋拉線顯示窗（玩完提示掃碼）"),
     證書QR示意: 軌(630, 750, "圈出證書機台 QR＋下載說明"),
     手機面板: 軌(232, 750, "拉出面板＋手持手機在場窗（掃碼起）"),
@@ -38,6 +46,10 @@ export const questDemoSchema = z.object({
     掃描中標語: z.string().default("相機・對準機台 QR"),
     掃描完成標語: z.string().default("✓ 已辨識・顯示本日任務"),
     參加按鈕: z.string().default("參加任務・記錄進度"),
+    段落一小標: z.string().default("先玩再接任務"),
+    段落一次標: z.string().default("體驗完機台，提示遊客可參加本日任務。"),
+    段落二小標: z.string().default("直接開 App 接任務"),
+    段落二次標: z.string().default("也可直接開啟 App 每日任務，接下本日任務。"),
     說明卡: z.array(說明卡列).default([
       { 文字: "組立工場練習所開放五座互動機具，可直接操作體驗。", 起: 60, 訖: 220 },
       { 文字: "完成操作後，機台提示掃描 QR code。", 起: 220, 訖: 300 },
@@ -61,6 +73,18 @@ const CERT_QR = { x: 658, y: 328, size: 110 };
 const SCAN_QR = { x: 217, y: 603, size: 124 };
 const ORANGE = "#e8862d";
 const CREAM = "#faf7f2";
+
+// 左上段落小標卡（PO 2026-07-22：兩階段各一張，接替標題段位置）
+const PhaseCard: React.FC<{ title: string; subtitle: string }> = ({ title, subtitle }) => {
+  const frame = useCurrentFrame();
+  const p = interpolate(frame, [0, 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  return (
+    <div style={{ position: "absolute", top: 56, left: 64, maxWidth: 860, opacity: p, transform: `translateX(${(p - 1) * 60}px)`, background: "rgba(15,18,25,0.82)", backdropFilter: "blur(6px)", borderLeft: "6px solid #ff8a3d", borderRadius: 10, padding: "20px 28px", fontFamily: FONT }}>
+      <div style={{ color: "#fff", fontSize: 36, fontWeight: 700, letterSpacing: 2 }}>{title}</div>
+      <div style={{ color: "#d8dde6", fontSize: 22, marginTop: 6, letterSpacing: 1, lineHeight: 1.5 }}>{subtitle}</div>
+    </div>
+  );
+};
 
 const QrCircle: React.FC<{ target: { x: number; y: number; size: number }; enterFrame: number }> = ({ target, enterFrame }) => {
   const frame = useCurrentFrame();
@@ -235,6 +259,12 @@ export const QuestDemo: React.FC<QuestDemoProps> = ({ 時間軸: T, 文案 }) =>
       <Sequence name="標題段" from={T.標題段.開始} durationInFrames={durT(T.標題段)}>
         <TitleCard index={4} title={文案.標題} subtitle={文案.副標} enterFrame={0} />
       </Sequence>
+      <Sequence name="段落一標卡" from={T.段落一標卡.開始} durationInFrames={durT(T.段落一標卡)}>
+        <PhaseCard title={文案.段落一小標} subtitle={文案.段落一次標} />
+      </Sequence>
+      <Sequence name="段落二標卡" from={T.段落二標卡.開始} durationInFrames={durT(T.段落二標卡)}>
+        <PhaseCard title={文案.段落二小標} subtitle={文案.段落二次標} />
+      </Sequence>
       <Sequence name="機台QR示意" from={T.機台QR示意.開始} durationInFrames={durT(T.機台QR示意)}>
         <SceneQrCallout src={A("qr_quest_gold.png")} enterFrame={4} target={SCENE_QR}
           card={{ x: 70, y: 300, width: 240 }} />
@@ -265,7 +295,7 @@ export const QuestDemo: React.FC<QuestDemoProps> = ({ 時間軸: T, 文案 }) =>
       </Sequence>
 
       <Sequence name="說明卡" from={0} durationInFrames={T.黑幕收尾.開始}>
-        <InfoCardRun lines={文案.說明卡.map((l) => ({ text: l.文字, from: l.起, to: l.訖 }))} />
+        <InfoCardRun lines={文案.說明卡.map((l) => ({ text: l.文字, from: l.起, to: l.訖, title: l.標題, x: l.X, y: l.Y, width: l.寬 }))} />
       </Sequence>
 
       {/* 結尾僅保留黑幕，不顯示說明卡。 */}

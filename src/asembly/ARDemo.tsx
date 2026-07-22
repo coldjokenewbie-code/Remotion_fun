@@ -10,13 +10,18 @@ const 軌 = (開始: number, 結束: number, 說明: string) =>
     開始: z.number().int().min(0).max(3000).describe(`${說明}——開始幀`),
     結束: z.number().int().min(0).max(3000).describe(`${說明}——結束幀`),
   }).default({ 開始, 結束 });
-const 說明卡列 = z.object({ 文字: z.string(), 起: z.number().int().min(0).max(3000), 訖: z.number().int().min(0).max(3000) });
+const 說明卡列 = z.object({
+  文字: z.string(), 起: z.number().int().min(0).max(3000), 訖: z.number().int().min(0).max(3000),
+  標題: z.string().optional().describe("小標（有值＝兩行呈現）"),
+  X: z.number().min(0).max(1920).optional().describe("浮動位置 X（與 Y 併用；缺省＝底部置中）"),
+  Y: z.number().min(0).max(1080).optional().describe("浮動位置 Y"),
+  寬: z.number().optional().describe("浮動卡寬（預設 620）"),
+});
 
 export const arDemoSchema = z.object({
   時間軸: z.object({
-    亮景全景: 軌(0, 30, "背景：機坑亮景全景"),
-    訪客中景: 軌(30, 44, "背景：訪客舉手機中景"),
-    暗景聚光: 軌(44, 450, "背景：暗景聚光近景（其後持續）"),
+    亮景全景: 軌(0, 44, "背景：機坑亮景全景"),
+    暗景聚光: 軌(44, 450, "背景：暗景聚光近景（掃描完成後切亮景訪客中景照）"),
     標題段: 軌(0, 72, "左上功能標示卡顯示窗"),
     開場QR示意: 軌(0, 30, "左側 QR 放大示意卡"),
     手機面板: 軌(58, 426, "拉出面板＋手持手機在場窗"),
@@ -56,11 +61,11 @@ export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
   const revealP = interpolate(frame, [tapAt + 3, tapAt + 17], [0, 1], clamp);
   const fade = interpolate(frame, [T.黑幕淡出.開始, T.黑幕淡出.結束 - 6], [0, 1], clamp);
   const s1Scale = interpolate(frame, [T.亮景全景.開始, T.亮景全景.結束 + 8], [1.05, 1.12]);
-  const in2 = interpolate(frame, [T.訪客中景.開始, T.訪客中景.開始 + 8], [0, 1], clamp);
-  const s2Scale = interpolate(frame, [T.訪客中景.開始, T.訪客中景.結束 + 8], [1, 1.08], clamp);
   const in3 = interpolate(frame, [T.暗景聚光.開始, T.暗景聚光.開始 + 8], [0, 1], clamp);
   const push3 = interpolate(frame, [T.暗景聚光.開始, T.掃描畫面.結束 + 20], [1.02, 1.3], clamp);
-  const bgDim = interpolate(frame, [T.掃描畫面.結束 - 10, T.掃描畫面.結束 + 20], [0, 0.25], clamp);
+  // 掃描完成切 AR 分頁：背景換亮景訪客中景照並延續到片尾，拉線/QR 聚光同步退場（PO 2026-07-22）
+  const brightIn = interpolate(frame, [T.掃描畫面.結束, T.掃描畫面.結束 + 12], [0, 1], clamp);
+  const brightZoom = interpolate(frame, [T.掃描畫面.結束, T.黑幕淡出.結束], [1.0, 1.08], clamp);
   const scanStartRel = T.掃描畫面.開始 - T.手機面板.開始;
   const tapRel = { start: T.手指點按.開始 - T.手機面板.開始, tapAt: tapAt - T.手機面板.開始, end: T.手指點按.結束 - T.手機面板.開始 };
 
@@ -69,16 +74,13 @@ export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
       <Sequence name="亮景全景" from={T.亮景全景.開始} durationInFrames={dur(T.亮景全景) + 8}>
         <Img src={staticFile(A("scene1_G13.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover", transform: `scale(${s1Scale})` }} />
       </Sequence>
-      <Sequence name="訪客中景" from={T.訪客中景.開始} durationInFrames={dur(T.訪客中景) + 8}>
-        <div style={{ position: "absolute", inset: 0, opacity: in2, transform: `scale(${s2Scale})` }}>
-          <Img src={staticFile(A("scene2_G13.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
-        </div>
-      </Sequence>
       <Sequence name="暗景聚光" from={T.暗景聚光.開始} durationInFrames={dur(T.暗景聚光)}>
-        <div style={{ position: "absolute", inset: 0, opacity: in3, transform: `scale(${push3})`, transformOrigin: `${SPOT3.x} ${SPOT3.y}` }}>
+        {brightIn < 1 && <div style={{ position: "absolute", inset: 0, opacity: in3, transform: `scale(${push3})`, transformOrigin: `${SPOT3.x} ${SPOT3.y}` }}>
           <Img src={staticFile(A("scene3_G13_dim.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
-        </div>
-        <div style={{ position: "absolute", inset: 0, background: `rgba(5,8,14,${bgDim})` }} />
+        </div>}
+        {brightIn > 0 && <div style={{ position: "absolute", inset: 0, opacity: brightIn, transform: `scale(${brightZoom})`, transformOrigin: "50% 50%" }}>
+          <Img src={staticFile(A("scene2_G13.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>}
       </Sequence>
 
       <Sequence name="標題段" from={T.標題段.開始} durationInFrames={dur(T.標題段)}>
@@ -90,7 +92,8 @@ export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
 
       {/* 手機面板：掃描→AR 分頁→手指點按→台工1677 重現 */}
       <Sequence name="手機面板" from={T.手機面板.開始} durationInFrames={dur(T.手機面板)}>
-        <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={0} visibleTo={dur(T.手機面板)}>
+        <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={0} visibleTo={dur(T.手機面板)}
+          leaderWindow={{ from: 0, to: T.掃描畫面.結束 - T.手機面板.開始 }}>
           <PhoneAssetFrame src={A("hand_po.png")} enterFrame={0} left={-76} top={10}
             overlay={<FingerTap src={A("finger_tap_po.png")} tip={[881, 161]} imgSize={1024} scale={0.87}
               target={[381, 732]} start={tapRel.start} tapAt={tapRel.tapAt} end={tapRel.end} from={[-560, 500]} />}>
@@ -106,7 +109,7 @@ export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
       </Sequence>
 
       <Sequence name="說明卡" from={0} durationInFrames={T.黑幕淡出.開始}>
-        <InfoCardRun lines={文案.說明卡.map((l) => ({ text: l.文字, from: l.起, to: l.訖 }))} />
+        <InfoCardRun lines={文案.說明卡.map((l) => ({ text: l.文字, from: l.起, to: l.訖, title: l.標題, x: l.X, y: l.Y, width: l.寬 }))} />
       </Sequence>
 
       <Sequence name="黑幕淡出" from={T.黑幕淡出.開始} durationInFrames={dur(T.黑幕淡出)}>

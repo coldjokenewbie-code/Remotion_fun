@@ -213,8 +213,9 @@ export const InfoCard: React.FC<{ at: number; title?: string; body: string }> = 
 };
 
 // ── 說明卡串（字幕替代；PO 2026-07-22 全片禁字幕、只用字卡）─────
-// 底部置中（原字幕區，不壓左側 QR 卡/圖像），卡片樣式同 InfoCard 深底橘邊
-export const InfoCardRun: React.FC<{ lines: { text: string; from: number; to: number }[] }> = ({ lines }) => {
+// 預設底部置中；行帶 x/y 時改浮動小標字卡（深底橘邊、可帶標題兩行呈現）——
+// PO 2026-07-22：底部帶過於像字幕，位置逐卡指定避免單一
+export const InfoCardRun: React.FC<{ lines: { text: string; from: number; to: number; title?: string; x?: number; y?: number; width?: number }[] }> = ({ lines }) => {
   const frame = useCurrentFrame();
   return <>
     {lines.map((l, i) => {
@@ -223,6 +224,18 @@ export const InfoCardRun: React.FC<{ lines: { text: string; from: number; to: nu
         interpolate(frame, [l.from + 2, l.from + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
         interpolate(frame, [l.to - 8, l.to], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
       );
+      const floated = l.x !== undefined || l.y !== undefined;
+      if (floated) return (
+        <div key={i} style={{
+          position: "absolute", left: l.x ?? 72, top: l.y ?? 300, width: l.width ?? 620, boxSizing: "border-box",
+          opacity, transform: `translateX(${(opacity - 1) * 40}px)`, fontFamily: FONT,
+          background: "rgba(15,18,25,0.86)", borderLeft: "6px solid #ff8a3d", borderRadius: 10,
+          padding: "18px 26px", boxShadow: "0 12px 40px rgba(0,0,0,0.35)",
+        }}>
+          {l.title && <div style={{ color: "#ffad73", fontSize: 22, fontWeight: 800, letterSpacing: 4 }}>{l.title}</div>}
+          <div style={{ color: "#fff", fontSize: 30, fontWeight: 650, lineHeight: 1.55, marginTop: l.title ? 8 : 0 }}>{l.text}</div>
+        </div>
+      );
       return (
         <div key={i} style={{
           position: "absolute", bottom: 52, left: "50%", transform: "translateX(-50%)",
@@ -230,7 +243,8 @@ export const InfoCardRun: React.FC<{ lines: { text: string; from: number; to: nu
           background: "rgba(15,18,25,0.86)", borderLeft: "6px solid #ff8a3d", borderRadius: 10,
           padding: "16px 30px", boxShadow: "0 12px 40px rgba(0,0,0,0.35)",
         }}>
-          <div style={{ color: "#fff", fontSize: 30, fontWeight: 650, lineHeight: 1.55, whiteSpace: "nowrap" }}>{l.text}</div>
+          {l.title && <div style={{ color: "#ffad73", fontSize: 20, fontWeight: 800, letterSpacing: 4 }}>{l.title}</div>}
+          <div style={{ color: "#fff", fontSize: 30, fontWeight: 650, lineHeight: 1.55, whiteSpace: "nowrap", marginTop: l.title ? 6 : 0 }}>{l.text}</div>
         </div>
       );
     })}

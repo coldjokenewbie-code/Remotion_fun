@@ -19,9 +19,10 @@ export const airRaidSchema = z.object({
     標題段: 軌(0, 160, "左上功能標示卡顯示窗"),
     開場QR示意: 軌(0, 36, "左側 QR 放大示意卡"),
     手機面板: 軌(62, 850, "拉出面板＋手持手機在場窗"),
-    掃描畫面: 軌(72, 160, "手機內相機掃描畫面（結束＝切 App 分頁）"),
-    中文旁白: 軌(160, 460, "中文旁白＋語音說明卡（結束＝日文段開始）"),
-    日文段: 軌(460, 850, "點 JP→日文介面＋日文旁白＋多語卡"),
+    掃描畫面: 軌(72, 160, "手機內相機掃描畫面（結束＝切 App 分頁待播態）"),
+    中文旁白: 軌(190, 490, "中文旁白播放窗（開始＝點 Play；前段為待播畫面）"),
+    日文段: 軌(490, 905, "點 JP→日文待播介面＋多語卡"),
+    日文旁白: 軌(518, 905, "日文旁白播放窗（開始＝第二次點 Play）"),
     黑幕淡出: 軌(850, 876, "結尾黑幕；結束幀＝影片總長"),
   }),
   文案: z.object({
@@ -55,10 +56,15 @@ export const AirRaidDemo: React.FC<AirRaidProps> = ({ 時間軸: T, 文案 }) =>
   const in2 = interpolate(frame, [T.暗景中景.開始, T.暗景中景.開始 + 8], [0, 1], clamp);
   const push3 = interpolate(frame, [T.近景正視.開始, T.掃描畫面.結束 + 20], [1.05, 1.32], clamp);
   const in3 = interpolate(frame, [T.近景正視.開始, T.近景正視.開始 + 8], [0, 1], clamp);
-  const bgDim = interpolate(frame, [T.掃描畫面.結束 - 10, T.掃描畫面.結束 + 20], [0, 0.3], clamp);
-  // 手機面板軌內的相對切換點
+  // 掃描完成切 App 分頁：背景換明亮正視圖（與掃展牌直達片共用素材），拉線同步退場（PO 2026-07-22）
+  const brightIn = interpolate(frame, [T.掃描畫面.結束, T.掃描畫面.結束 + 12], [0, 1], clamp);
+  const brightZoom = interpolate(frame, [T.掃描畫面.結束, T.近景正視.結束], [1.02, 1.1], clamp);
+  // 手機面板軌內的相對切換點（PO 2026-07-22：播放前須明確點 Play——中/日各一次）
   const scanRel = { from: T.掃描畫面.開始 - T.手機面板.開始 + 10, to: T.掃描畫面.結束 - T.手機面板.開始 };
   const jpRel = T.日文段.開始 - T.手機面板.開始;
+  const twPlayRel = T.中文旁白.開始 - T.手機面板.開始;
+  const jpPlayRel = T.日文旁白.開始 - T.手機面板.開始;
+  const PLAY_BTN: [number, number] = [261, 471]; // app 分頁 Play 鍵（素材座標；螢幕 62,413 換算）
 
   return (
     <AbsoluteFill style={{ background: "#000", fontFamily: FONT }}>
@@ -72,10 +78,12 @@ export const AirRaidDemo: React.FC<AirRaidProps> = ({ 時間軸: T, 文案 }) =>
         </div>
       </Sequence>
       <Sequence name="近景正視" from={T.近景正視.開始} durationInFrames={T.近景正視.結束 - T.近景正視.開始}>
-        <div style={{ position: "absolute", inset: 0, opacity: in3, transform: `scale(${push3})`, transformOrigin: `${SPOT3.x} ${SPOT3.y}` }}>
+        {brightIn < 1 && <div style={{ position: "absolute", inset: 0, opacity: in3, transform: `scale(${push3})`, transformOrigin: `${SPOT3.x} ${SPOT3.y}` }}>
           <Img src={staticFile(A("scene3_0B7_close.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
-        </div>
-        <div style={{ position: "absolute", inset: 0, background: `rgba(5,8,14,${bgDim})` }} />
+        </div>}
+        {brightIn > 0 && <div style={{ position: "absolute", inset: 0, opacity: brightIn, transform: `scale(${brightZoom})`, transformOrigin: "50% 50%" }}>
+          <Img src={staticFile("asembly/direct/scene_0B7_bright.png")} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>}
       </Sequence>
 
       <Sequence name="標題段" from={T.標題段.開始} durationInFrames={dur(T.標題段)}>
@@ -87,15 +95,22 @@ export const AirRaidDemo: React.FC<AirRaidProps> = ({ 時間軸: T, 文案 }) =>
 
       {/* 手機面板（螢幕內容依掃描/日文軌切換；點按手指於日文段開始前滑入） */}
       <Sequence name="手機面板" from={T.手機面板.開始} durationInFrames={dur(T.手機面板)}>
-        <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={0} visibleTo={dur(T.手機面板)}>
+        <PhoneBubble anchor={PHONE_ANCHOR} visibleFrom={0} visibleTo={dur(T.手機面板)}
+          leaderWindow={{ from: 0, to: T.掃描畫面.結束 - T.手機面板.開始 }}>
           <PhoneAssetFrame src={A("hand_po.png")} enterFrame={0} left={-76} top={10}
-            overlay={<FingerTap src={A("finger_tap_po.png")} tip={[881, 161]} imgSize={1024} scale={0.87}
-              target={[476, 139]} start={jpRel - 36} tapAt={jpRel - 6} end={jpRel + 38} from={[-560, 500]} />}>
+            overlay={<>
+              <FingerTap src={A("finger_tap_po.png")} tip={[881, 161]} imgSize={1024} scale={0.87}
+                target={PLAY_BTN} start={twPlayRel - 32} tapAt={twPlayRel - 6} end={twPlayRel + 40} from={[-560, 500]} />
+              <FingerTap src={A("finger_tap_po.png")} tip={[881, 161]} imgSize={1024} scale={0.87}
+                target={[476, 139]} start={jpRel - 36} tapAt={jpRel - 6} end={jpRel + 38} from={[-560, 500]} />
+              <FingerTap src={A("finger_tap_po.png")} tip={[881, 161]} imgSize={1024} scale={0.87}
+                target={PLAY_BTN} start={jpPlayRel - 32} tapAt={jpPlayRel - 6} end={jpPlayRel + 40} from={[-560, 500]} />
+            </>}>
             <Sequence name="掃描畫面" from={T.掃描畫面.開始 - T.手機面板.開始} durationInFrames={dur(T.掃描畫面)}>
               <ScanView bg={A("scan_screen_po.png")} from={10} to={dur(T.掃描畫面)} qr={SCAN_QR} chrome={false} />
             </Sequence>
             <Sequence name="App語音分頁" from={T.掃描畫面.結束 - T.手機面板.開始} durationInFrames={dur(T.手機面板) - (T.掃描畫面.結束 - T.手機面板.開始)}>
-              <AppScreenSwap jpAtRel={jpRel - (T.掃描畫面.結束 - T.手機面板.開始)} />
+              <AppScreenSwap twPlayAtRel={twPlayRel - (T.掃描畫面.結束 - T.手機面板.開始)} jpAtRel={jpRel - (T.掃描畫面.結束 - T.手機面板.開始)} jpPlayAtRel={jpPlayRel - (T.掃描畫面.結束 - T.手機面板.開始)} />
             </Sequence>
           </PhoneAssetFrame>
         </PhoneBubble>
@@ -106,8 +121,10 @@ export const AirRaidDemo: React.FC<AirRaidProps> = ({ 時間軸: T, 文案 }) =>
         <InfoCard at={4} body={文案.語音說明卡} />
       </Sequence>
       <Sequence name="日文段" from={T.日文段.開始} durationInFrames={dur(T.日文段)}>
-        <Audio src={staticFile(A("vo_s3_ja_v3.mp3"))} />
         <InfoCard at={8} title={文案.多語卡標題} body={文案.多語卡內容} />
+      </Sequence>
+      <Sequence name="日文旁白" from={T.日文旁白.開始} durationInFrames={dur(T.日文旁白)}>
+        <Audio src={staticFile(A("vo_s3_ja_v3.mp3"))} />
       </Sequence>
 
       <Sequence name="黑幕淡出" from={T.黑幕淡出.開始} durationInFrames={dur(T.黑幕淡出)}>
@@ -117,8 +134,9 @@ export const AirRaidDemo: React.FC<AirRaidProps> = ({ 時間軸: T, 文案 }) =>
   );
 };
 
-// 掃描結束後的 App 分頁：中文播放中→日文介面（jpAtRel＝本 Sequence 內相對幀）
-const AppScreenSwap: React.FC<{ jpAtRel: number }> = ({ jpAtRel }) => {
+// 掃描結束後的 App 分頁四態：中文待播→點 Play 播放→切日文待播→點 Play 播放（rel＝本 Sequence 內相對幀）
+const AppScreenSwap: React.FC<{ twPlayAtRel: number; jpAtRel: number; jpPlayAtRel: number }> = ({ twPlayAtRel, jpAtRel, jpPlayAtRel }) => {
   const frame = useCurrentFrame();
-  return <Img src={staticFile(A(frame < jpAtRel ? "app_tw_play.png" : "app_jp_play.png"))} style={{ position: "absolute", width: "100%" }} />;
+  const src = frame < twPlayAtRel ? "app_tw_idle.png" : frame < jpAtRel ? "app_tw_play.png" : frame < jpPlayAtRel ? "app_jp_idle.png" : "app_jp_play.png";
+  return <Img src={staticFile(A(src))} style={{ position: "absolute", width: "100%" }} />;
 };
