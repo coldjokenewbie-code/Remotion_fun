@@ -64,6 +64,7 @@ export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
   const in3 = interpolate(frame, [T.暗景聚光.開始, T.暗景聚光.開始 + 8], [0, 1], clamp);
   const push3 = interpolate(frame, [T.暗景聚光.開始, T.掃描畫面.結束 + 20], [1.02, 1.3], clamp);
   // 掃描完成切 AR 分頁：背景換亮景訪客中景照並延續到片尾，拉線/QR 聚光同步退場（PO 2026-07-22）
+  // 手機轉「啟動 AR 系統」（AR 分頁起點＝掃描畫面.結束）即切場景 2.1：場景二去掉掃碼訪客（PO 2026-10-05）
   const brightIn = interpolate(frame, [T.掃描畫面.結束, T.掃描畫面.結束 + 12], [0, 1], clamp);
   const brightZoom = interpolate(frame, [T.掃描畫面.結束, T.黑幕淡出.結束], [1.0, 1.08], clamp);
   const scanStartRel = T.掃描畫面.開始 - T.手機面板.開始;
@@ -79,7 +80,7 @@ export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
           <Img src={staticFile(A("scene3_G13_dim.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
         </div>}
         {brightIn > 0 && <div style={{ position: "absolute", inset: 0, opacity: brightIn, transform: `scale(${brightZoom})`, transformOrigin: "50% 50%" }}>
-          <Img src={staticFile(A("scene2_G13.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
+          <Img src={staticFile(A("scene2_1_G13.png"))} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
         </div>}
       </Sequence>
 
