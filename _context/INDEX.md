@@ -1,5 +1,5 @@
 # Remotion_fun — 現況總覽 (INDEX)
-> 進場先讀。最後更新：2026-06-03
+> 進場先讀。最後更新：2026-10-05
 
 ## 一句話目標
 Remotion 程式化動畫實驗 repo（package: `remotion_fun`）。目前含車床動畫（Lathe）與世界旅遊地圖（WorldTripMap）兩支實驗。
@@ -16,6 +16,7 @@ Remotion 程式化動畫實驗 repo（package: `remotion_fun`）。目前含車�
 - 來源：`src/`
 
 ## 待辦 / 下一步
+- 【2026-10-05】組立工場導覽示範片（`src/asembly/` 六支）ARDemo 換新場景、QuestDemo 遊玩場景修正並交付。**當前 TaskLog＝`_context/TaskLog_2026-10-05_導覽示範片_AR立牌與Quest遊玩場景.md`**。Studio 在 git_mirror 端跑（Drive 無 node_modules）。
 - 無明確交接文件；接手請先看 `src/` 各 composition 與 `package.json` scripts。
 
 ## 備註
