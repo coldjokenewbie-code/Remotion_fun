@@ -1,3 +1,7 @@
 node_modules
 .DS_Store
 out/
+
+# 南科光雕渲染複本：SSOT＝南科再生水廠 tools/remotion/nanke（已在該 repo 版控）
+src/nanke/
+public/nanke/
