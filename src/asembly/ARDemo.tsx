@@ -49,10 +49,10 @@ const dur = (t: Track) => t.結束 - t.開始;
 
 const A = (p: string) => `asembly/ardemo/${p}`;
 // v7 實圖量測：橘色 AR QR；面板旁另有綠色語音 QR，勿圈錯。
-const SCENE_QR = { x: 608, y: 532, size: 14 };
+const SCENE_QR = { x: 435, y: 412, size: 14 }; // AR2 新場景（PO 2026-10-05 第 4b 輪），圖檔已為 1920×1080
 const SCAN_QR = { x: 176, y: 529, size: 107 };
-const SPOT3 = { x: "12.3%", y: "50.9%" };
-const PHONE_ANCHOR = { x: 236, y: 550 };
+const SPOT3 = { x: "22.66%", y: "38.15%" };
+const PHONE_ANCHOR = { x: 435, y: 412 }; // ＝SPOT3 換算 px（聚光推近的定點）
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
 
 export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
@@ -87,7 +87,7 @@ export const ARDemo: React.FC<ARDemoProps> = ({ 時間軸: T, 文案 }) => {
         <TitleCard index={2} title={文案.標題} subtitle={文案.副標} enterFrame={0} />
       </Sequence>
       <Sequence name="開場QR示意" from={T.開場QR示意.開始} durationInFrames={dur(T.開場QR示意)}>
-        <SceneQrCallout src={A("qr_ar_G13_labeled.png")} enterFrame={15} target={SCENE_QR} backgroundScale={s1Scale} />
+        <SceneQrCallout src={A("qr_ar_G13_labeled.png")} enterFrame={15} target={SCENE_QR} backgroundScale={s1Scale} card={{ x: 760, y: 180, width: 300 }} />
       </Sequence>
 
       {/* 手機面板：掃描→AR 分頁→手指點按→台工1677 重現 */}
